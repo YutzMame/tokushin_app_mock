@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>校舎スタッフ用 アンケート管理</title>
+  <link rel="stylesheet" href="assets/screens.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="wrap top-nav-inner">
+      <div class="brand">
+        <span class="eyebrow">School staff screen</span>
+        <h1>校舎スタッフ用 アンケート管理</h1>
+        <p class="subtle">当日の回答状況、未回答者、紙回答、授業報告用サマリを確認する画面。</p>
+      </div>
+      <nav class="nav-links" aria-label="画面切替">
+        <a class="nav-link" href="staff_app.html">共有用PC</a>
+        <a class="nav-link" href="index.html">説明用トップ</a>
+        <a class="nav-link" href="student.html">生徒用</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    <section class="section-head">
+      <div>
+        <h2>本日の授業アンケート</h2>
+        <p class="subtle">生徒番号や氏名は校舎権限の画面でのみ扱う想定。モックでは仮名表示にしています。</p>
+      </div>
+      <div class="actions">
+        <button class="secondary" type="button" data-toast="紙回答の代理入力画面を開く想定です。">紙回答を登録</button>
+        <button class="secondary" type="button" data-toast="回答CSVを書き出す想定です。">回答CSV</button>
+        <button class="blue" type="button" data-toast="授業報告用の要約を作成しました。">授業報告サマリ</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="filters" aria-label="絞り込み">
+        <label>
+          日付
+          <input type="date" value="2026-05-23">
+        </label>
+        <label>
+          校舎
+          <select>
+            <option>御茶ノ水</option>
+            <option>渋谷</option>
+            <option>大阪</option>
+            <option>名古屋</option>
+          </select>
+        </label>
+        <label>
+          講座
+          <select>
+            <option>東大現代文</option>
+            <option>東大数学演習</option>
+            <option>東大英語</option>
+          </select>
+        </label>
+        <label>
+          表示
+          <select id="statusFilter">
+            <option value="all">すべて</option>
+            <option value="unanswered">未回答のみ</option>
+            <option value="needs">要フォローのみ</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span>出席対象</span>
+          <strong>38</strong>
+        </div>
+        <div class="stat">
+          <span>回答済み</span>
+          <strong>34</strong>
+        </div>
+        <div class="stat">
+          <span>未回答</span>
+          <strong>4</strong>
+        </div>
+        <div class="stat">
+          <span>紙回答</span>
+          <strong>2</strong>
+        </div>
+        <div class="stat">
+          <span>要フォロー</span>
+          <strong>3</strong>
+        </div>
+      </div>
+
+      <div class="progress" aria-label="回答率">
+        <span style="width:89%"></span>
+      </div>
+      <p class="meta">回答率 89%。未回答者には次コマ開始前までに声かけします。</p>
+    </section>
+
+    <div class="grid staff-layout" style="margin-top:16px">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <h2>回答・出席一覧</h2>
+            <p class="subtle">校舎スタッフが当日確認する一覧。出席判定とアンケート提出は別列で管理します。</p>
+          </div>
+          <div class="actions">
+            <button class="secondary filter-button" type="button" data-filter="all">すべて</button>
+            <button class="secondary filter-button" type="button" data-filter="unanswered">未回答</button>
+            <button class="secondary filter-button" type="button" data-filter="needs">要フォロー</button>
+          </div>
+        </div>
+
+        <table aria-label="回答・出席一覧">
+          <thead>
+            <tr>
+              <th>生徒</th>
+              <th>担当</th>
+              <th>出席</th>
+              <th>回答</th>
+              <th>満足度</th>
+              <th>難易度</th>
+              <th>対応</th>
+            </tr>
+          </thead>
+          <tbody id="studentRows">
+            <tr data-status="answered">
+              <td>生徒A<br><span class="meta">仮ID STU-001</span></td>
+              <td>田村</td>
+              <td><span class="chip green">出席</span></td>
+              <td><span class="chip green">提出済み</span></td>
+              <td>5</td>
+              <td>ちょうどよい</td>
+              <td><button class="secondary" type="button" data-toast="回答詳細を開く想定です。">詳細</button></td>
+            </tr>
+            <tr data-status="unanswered">
+              <td>生徒B<br><span class="meta">仮ID STU-014</span></td>
+              <td>小幡</td>
+              <td><span class="chip green">出席</span></td>
+              <td><span class="chip amber">未回答</span></td>
+              <td>-</td>
+              <td>-</td>
+              <td><button class="amber" type="button" data-toast="声かけ対象に追加しました。">声かけ</button></td>
+            </tr>
+            <tr data-status="needs">
+              <td>生徒C<br><span class="meta">仮ID STU-021</span></td>
+              <td>田村</td>
+              <td><span class="chip green">出席</span></td>
+              <td><span class="chip green">提出済み</span></td>
+              <td>3</td>
+              <td>難しい</td>
+              <td><button class="amber" type="button" data-toast="要フォローとしてメモしました。">メモ</button></td>
+            </tr>
+            <tr data-status="paper">
+              <td>生徒D<br><span class="meta">仮ID STU-027</span></td>
+              <td>三瓶</td>
+              <td><span class="chip green">出席</span></td>
+              <td><span class="chip blue">紙回答</span></td>
+              <td>4</td>
+              <td>易しい</td>
+              <td><button class="secondary" type="button" data-toast="紙回答の入力内容を確認する想定です。">確認</button></td>
+            </tr>
+            <tr data-status="absent">
+              <td>生徒E<br><span class="meta">仮ID STU-033</span></td>
+              <td>小幡</td>
+              <td><span class="chip red">欠席</span></td>
+              <td><span class="chip">対象外</span></td>
+              <td>-</td>
+              <td>-</td>
+              <td><button class="secondary" type="button" data-toast="欠席メモを確認する想定です。">欠席メモ</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <aside class="grid">
+        <section class="card">
+          <h2>未回答者キュー</h2>
+          <div class="queue">
+            <div class="queue-card">
+              <div class="row">
+                <strong>生徒B</strong>
+                <span class="chip amber">未回答</span>
+              </div>
+              <p class="meta">次コマ開始までに回答案内。スマホ不可なら校舎端末へ誘導。</p>
+              <button class="amber" type="button" data-toast="声かけ済みにしました。">声かけ済みにする</button>
+            </div>
+            <div class="queue-card">
+              <div class="row">
+                <strong>紙回答 2件</strong>
+                <span class="chip blue">代理入力</span>
+              </div>
+              <p class="meta">紙を残す場合は、回収後にスタッフが同じ設問で入力します。</p>
+              <button class="secondary" type="button" data-toast="紙回答入力を開く想定です。">代理入力</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>授業報告用サマリ</h2>
+          <div class="report-box">
+            回答34件。満足度4以上は31件。難易度は「ちょうどよい」が最多。記述では、解答プロセスが具体的で復習しやすいという声が多い。一方で、演習後半の難度に関するコメントが複数あり、次回フォロー候補。
+          </div>
+          <div class="actions" style="margin-top:12px">
+            <button class="secondary" type="button" data-toast="サマリをコピーする想定です。">コピー</button>
+            <button class="secondary" type="button" data-toast="FirstClass報告文に整形する想定です。">報告文に整形</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>権限メモ</h2>
+          <div class="notice">
+            この画面は校舎スタッフ権限を想定。回答DBは仮名IDで保持し、生徒番号対応表は別管理にします。
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const rows = Array.from(document.querySelectorAll("#studentRows tr"));
+    const statusFilter = document.getElementById("statusFilter");
+    const toast = document.getElementById("toast");
+
+    function setFilter(filter) {
+      rows.forEach((row) => {
+        const status = row.dataset.status;
+        const show = filter === "all" || status === filter || (filter === "needs" && status === "needs");
+        row.classList.toggle("is-hidden", !show);
+      });
+      statusFilter.value = filter;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("visible");
+      window.setTimeout(() => toast.classList.remove("visible"), 2200);
+    }
+
+    document.querySelectorAll(".filter-button").forEach((button) => {
+      button.addEventListener("click", () => setFilter(button.dataset.filter));
+    });
+
+    statusFilter.addEventListener("change", () => setFilter(statusFilter.value));
+
+    document.querySelectorAll("[data-toast]").forEach((button) => {
+      button.addEventListener("click", () => showToast(button.dataset.toast));
+    });
+  </script>
+</body>
+</html>

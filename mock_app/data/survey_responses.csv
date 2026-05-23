@@ -1,0 +1,5 @@
+response_id,student_id,course_id,satisfaction,difficulty,understanding,comment,submitted_at
+RES-001,STU-001,C-20260523-JPN-O,5,ちょうどよい,4,記述の読み方が具体的で復習しやすい,2026-05-23 17:08
+RES-002,STU-021,C-20260523-JPN-O,4,難しい,3,演習後半は難しかったが解説で理解できた,2026-05-23 17:11
+RES-003,STU-041,C-20260523-JPN-S,5,ちょうどよい,5,要約の視点が分かりやすかった,2026-05-23 17:04
+RES-004,STU-052,C-20260524-MATH-OS,4,難しい,4,答案の書き出し方を復習したい,2026-05-24 16:05

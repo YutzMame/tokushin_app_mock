@@ -1,0 +1,5 @@
+change_id,course_id,change_type,before_value,after_value,reason,announced_status,affected_students,updated_at
+CHG-001,C-20260523-MATH-O,教室変更,502,503,同時間帯の教室利用調整,LINE配信済,38,2026-05-22 18:20
+CHG-002,C-20260525-PHY-O,休講,2026-05-25 10:00,未定,講師都合,LINE配信済,31,2026-05-22 20:10
+CHG-003,C-20260526-CHEM-O,日程変更,2026-05-26 13:00,2026-05-28 13:00,校舎設備点検,LINE未配信,28,2026-05-23 09:30
+CHG-004,C-20260524-ENG-N,講師変更,講師C,講師D,講師体調不良,校舎確認中,22,2026-05-23 08:40

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生徒用 授業アンケート</title>
+  <link rel="stylesheet" href="assets/screens.css">
+</head>
+<body>
+  <header class="top-nav">
+    <div class="wrap top-nav-inner">
+      <div class="brand">
+        <span class="eyebrow">Student screen</span>
+        <h1>生徒用 授業アンケート</h1>
+        <p class="subtle">最終コマ前の休み時間に、スマホまたは校舎端末で回答する想定。</p>
+      </div>
+      <nav class="nav-links" aria-label="画面切替">
+        <a class="nav-link" href="student_app.html">共有用スマホ</a>
+        <a class="nav-link" href="index.html">説明用トップ</a>
+        <a class="nav-link" href="staff.html">校舎スタッフ用</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    <div class="grid student-layout">
+      <section class="phone" aria-label="生徒用スマートフォン画面">
+        <div class="phone-screen">
+          <div class="phone-status">
+            <span>14:42</span>
+            <span>東大特進</span>
+          </div>
+          <div class="phone-header">
+            <h1>授業アンケート</h1>
+            <p class="subtle">回答は授業改善と最終授業日の報告に使用します。</p>
+          </div>
+
+          <div class="phone-body">
+            <div id="donePanel" class="done-panel">
+              <strong>提出済みです</strong>
+              <p class="meta">回答ありがとうございました。出席状況は受付・授業出席の記録で確認されます。</p>
+            </div>
+
+            <div id="surveyContent" class="submitted-hidden">
+              <div class="notice">
+                出席判定とは別管理です。休み時間中の提出にご協力ください。
+              </div>
+
+              <div class="course-card">
+                <div class="row">
+                  <strong>東大現代文 御茶ノ水</strong>
+                  <span class="chip green">回答受付中</span>
+                </div>
+                <p class="meta">第1期 最終回 / 2026年5月23日 / 講師A</p>
+                <p class="meta">提出目安: 次のコマ開始前まで</p>
+              </div>
+
+              <div class="steps" aria-label="回答ステップ">
+                <div class="step active">講座確認</div>
+                <div class="step active">回答入力</div>
+                <div class="step">提出完了</div>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>授業の満足度</span>
+                  <span class="required">必須</span>
+                </div>
+                <div class="rating" data-choice-group="satisfaction">
+                  <button class="choice" type="button">1</button>
+                  <button class="choice" type="button">2</button>
+                  <button class="choice" type="button">3</button>
+                  <button class="choice selected" type="button">4</button>
+                  <button class="choice" type="button">5</button>
+                </div>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>授業の難易度</span>
+                  <span class="required">必須</span>
+                </div>
+                <div class="segmented" data-choice-group="difficulty">
+                  <button class="choice" type="button">易しい</button>
+                  <button class="choice selected" type="button">ちょうどよい</button>
+                  <button class="choice" type="button">難しい</button>
+                </div>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>理解度</span>
+                  <span class="required">必須</span>
+                </div>
+                <div class="rating" data-choice-group="understanding">
+                  <button class="choice" type="button">1</button>
+                  <button class="choice" type="button">2</button>
+                  <button class="choice" type="button">3</button>
+                  <button class="choice selected" type="button">4</button>
+                  <button class="choice" type="button">5</button>
+                </div>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>今日の授業でよかった点</span>
+                  <span class="required">必須</span>
+                </div>
+                <textarea aria-label="今日の授業でよかった点">記述の読み方が具体的で、復習するときの見方がわかりました。</textarea>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>学習状況・他塾状況</span>
+                  <span class="meta">任意</span>
+                </div>
+                <select aria-label="学習状況・他塾状況">
+                  <option>東大特進中心で進めている</option>
+                  <option>他塾と併用している</option>
+                  <option>学校中心で進めている</option>
+                  <option>まだ決めていない</option>
+                </select>
+              </div>
+
+              <div class="question">
+                <div class="question-title">
+                  <span>担任・スタッフに相談したいこと</span>
+                  <span class="meta">任意</span>
+                </div>
+                <textarea aria-label="相談したいこと" placeholder="相談したい内容があれば入力"></textarea>
+              </div>
+
+              <div class="submit-bar">
+                <button id="submitSurvey" class="primary" type="button">回答を提出する</button>
+                <p class="meta">送信後、回答IDと仮名化された生徒IDで保存されます。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="grid two" aria-label="生徒画面の設計メモ">
+        <article class="card">
+          <h2>この画面でやること</h2>
+          <ul class="summary-list">
+            <li>
+              <strong>短時間で回答</strong>
+              休み時間中に終わるよう、選択式を中心にして記述は最小限にします。
+            </li>
+            <li>
+              <strong>出席とは分ける</strong>
+              「提出済み」と表示し、「出席確定」とは表示しません。
+            </li>
+            <li>
+              <strong>当日集計へ送る</strong>
+              満足度、難易度、理解度、コメントを授業報告の素材にします。
+            </li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>紙運用からの変更点</h2>
+          <ul class="summary-list">
+            <li>
+              <strong>紙配布をリンク案内へ</strong>
+              QR、受付端末、校舎端末から同じ画面へ誘導します。
+            </li>
+            <li>
+              <strong>欠席者は原則対象外</strong>
+              現行運用と同じく、出席した生徒から回答を集めます。
+            </li>
+            <li>
+              <strong>手入力をなくす</strong>
+              回答はそのまま集計テーブルに入ります。
+            </li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>表示する設問</h2>
+          <table aria-label="設問構成">
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>形式</th>
+                <th>扱い</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>満足度</td>
+                <td>5段階</td>
+                <td>必須</td>
+              </tr>
+              <tr>
+                <td>難易度</td>
+                <td>3択</td>
+                <td>必須</td>
+              </tr>
+              <tr>
+                <td>理解度</td>
+                <td>5段階</td>
+                <td>必須</td>
+              </tr>
+              <tr>
+                <td>コメント</td>
+                <td>記述</td>
+                <td>必須</td>
+              </tr>
+              <tr>
+                <td>他塾状況</td>
+                <td>選択</td>
+                <td>任意</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="card">
+          <h2>例外導線</h2>
+          <div class="notice amber">
+            スマホが使えない生徒は、校舎端末で同じ画面に回答します。紙回答を残す場合はスタッフ画面から代理入力します。
+          </div>
+        </article>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    document.querySelectorAll("[data-choice-group]").forEach((group) => {
+      group.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        group.querySelectorAll("button").forEach((item) => item.classList.remove("selected"));
+        button.classList.add("selected");
+      });
+    });
+
+    document.getElementById("submitSurvey").addEventListener("click", () => {
+      document.getElementById("surveyContent").classList.add("submitted");
+      document.getElementById("donePanel").classList.add("visible");
+      document.querySelectorAll(".step").forEach((step) => step.classList.add("active"));
+      document.getElementById("donePanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  </script>
+</body>
+</html>

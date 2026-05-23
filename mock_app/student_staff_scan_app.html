@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生徒提示QR版プロトタイプ</title>
+  <link rel="stylesheet" href="assets/screens.css">
+</head>
+<body data-app="student-pass">
+  <main class="share-student">
+    <section class="phone" aria-label="生徒提示QR版スマホ画面">
+      <div class="phone-screen">
+        <div class="phone-status">
+          <span>生徒提示QR版</span>
+          <span>東大特進</span>
+        </div>
+        <div class="phone-header">
+          <h1 id="passStudentName">読み込み中</h1>
+          <p class="subtle" id="passStudentVenue">CSVを読み込んでいます</p>
+        </div>
+
+        <div class="phone-body">
+          <div class="notice">
+            生徒がこのQRを提示し、校舎側端末で読み取って入室登録する方式です。
+          </div>
+
+          <div class="course-card">
+            <div class="row">
+              <strong id="passCourseName">講座を選択</strong>
+              <span id="passCourseStatus" class="chip">読込中</span>
+            </div>
+            <p class="meta" id="passCourseMeta">講座CSVを参照しています</p>
+          </div>
+
+          <div class="qr-reader qr-pass">
+            <div>
+              <div class="qr-code qr-code-large" aria-hidden="true"></div>
+              <p class="meta" id="passQrLabel">生徒ID + 講座IDの提示QR</p>
+            </div>
+          </div>
+
+          <button class="primary" id="passReadButton" type="button" style="width:100%; margin-top:12px">校舎端末で読み取り済みにする</button>
+
+          <h3 style="margin-top:16px">本日の講座</h3>
+          <div id="passCourseList" class="stack"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>

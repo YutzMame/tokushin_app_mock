@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>授業後アンケートDX 生徒画面モック</title>
+  <style>
+    :root {
+      --bg: #f7f6f2;
+      --paper: #fffdf8;
+      --panel: #ffffff;
+      --line: #d8d4ca;
+      --text: #2f2e2b;
+      --muted: #69645c;
+      --deep: #173f36;
+      --green: #14795f;
+      --green-bg: #e8f6ef;
+      --blue: #245d8f;
+      --blue-bg: #eef4fb;
+      --amber: #9a6818;
+      --amber-bg: #fff7df;
+      --red: #a7422e;
+      --red-bg: #fff0ed;
+      --shadow: 0 16px 42px rgba(48, 43, 35, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Segoe UI", sans-serif;
+      line-height: 1.55;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 0;
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab,
+    .chip,
+    button,
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 6px 11px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .tab {
+      white-space: nowrap;
+    }
+
+    .chip {
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      background: #fff;
+    }
+
+    .chip.green {
+      color: var(--green);
+      border-color: #aad5c7;
+      background: var(--green-bg);
+    }
+
+    .chip.blue {
+      color: var(--blue);
+      border-color: #b9cde2;
+      background: var(--blue-bg);
+    }
+
+    .chip.amber {
+      color: var(--amber);
+      border-color: #e1c27a;
+      background: var(--amber-bg);
+    }
+
+    .chip.red {
+      color: var(--red);
+      border-color: #e1afa4;
+      background: var(--red-bg);
+    }
+
+    button,
+    .button {
+      border-color: #10654f;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button.secondary,
+    .button.secondary {
+      border-color: var(--line);
+      background: #fff;
+      color: var(--text);
+    }
+
+    button.amber,
+    .button.amber {
+      border-color: #7d5315;
+      background: var(--amber);
+      color: #fff;
+    }
+
+    main {
+      padding: 28px 0 64px;
+    }
+
+    section {
+      margin-bottom: 42px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin-bottom: 4px;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .hero-grid {
+      grid-template-columns: 390px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .card.flat {
+      box-shadow: none;
+    }
+
+    .phone-shell {
+      width: 390px;
+      max-width: 100%;
+      border-radius: 34px;
+      background: #1f1e1b;
+      padding: 13px;
+      box-shadow: 0 24px 52px rgba(33, 29, 22, 0.22);
+    }
+
+    .phone-screen {
+      min-height: 760px;
+      overflow: hidden;
+      border: 1px solid #161411;
+      border-radius: 24px;
+      background: var(--paper);
+    }
+
+    .phone-status {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 16px 8px;
+      background: var(--deep);
+      color: #dcefe8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .phone-header {
+      padding: 14px 16px 18px;
+      background: var(--deep);
+      color: #fff;
+    }
+
+    .phone-header h2 {
+      margin-bottom: 6px;
+      color: #fff;
+      font-size: 21px;
+    }
+
+    .phone-header p {
+      margin-bottom: 0;
+      color: #dcefe8;
+      font-size: 13px;
+    }
+
+    .phone-body {
+      padding: 14px;
+    }
+
+    .notice {
+      padding: 12px;
+      border: 1px solid #aad5c7;
+      border-radius: 8px;
+      background: var(--green-bg);
+      color: #0f5948;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .notice.amber {
+      border-color: #e1c27a;
+      background: var(--amber-bg);
+      color: #765016;
+    }
+
+    .course-card {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .question {
+      margin-top: 14px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .question-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 9px;
+      font-weight: 800;
+    }
+
+    .required {
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .segmented,
+    .rating {
+      display: grid;
+      gap: 8px;
+    }
+
+    .segmented {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rating {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .choice {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf7;
+      color: var(--text);
+      padding: 7px 8px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .choice.selected {
+      border-color: #0e6c54;
+      background: var(--green);
+      color: #fff;
+    }
+
+    .choice.small {
+      font-size: 12px;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 9px 10px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .submit-area {
+      position: sticky;
+      bottom: 0;
+      margin: 14px -14px -14px;
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.96);
+      backdrop-filter: blur(10px);
+    }
+
+    .submit-area button {
+      width: 100%;
+      min-height: 48px;
+      font-size: 15px;
+    }
+
+    .done-state {
+      display: none;
+      padding: 16px;
+      border: 1px solid #aad5c7;
+      border-radius: 8px;
+      background: var(--green-bg);
+      color: #0f5948;
+    }
+
+    .done-state.visible {
+      display: block;
+    }
+
+    .hidden-after-submit.submitted {
+      display: none;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .feature-list li {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .feature-list strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr) 44px;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ebe7dd;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #ece8de;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: #fbfaf7;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .flow-board {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .timeline {
+      min-width: 1040px;
+      display: grid;
+      grid-template-columns: 130px repeat(6, 1fr);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .timeline > div {
+      min-height: 54px;
+      padding: 10px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .timeline > div:nth-child(7n) {
+      border-right: 0;
+    }
+
+    .time-head,
+    .dept {
+      background: #fbfaf7;
+      color: var(--muted);
+      font-weight: 850;
+    }
+
+    .dept {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .flow-card {
+      min-height: 78px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 9px;
+    }
+
+    .flow-card strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+
+    .flow-card.student {
+      border-color: #aad5c7;
+      background: var(--green-bg);
+    }
+
+    .flow-card.school {
+      border-color: #b9cde2;
+      background: var(--blue-bg);
+    }
+
+    .flow-card.ops {
+      border-color: #e1c27a;
+      background: var(--amber-bg);
+    }
+
+    .flow-card.data {
+      border-color: #cfc6b7;
+      background: #f4f1e8;
+    }
+
+    .flow-card.pos {
+      border-color: #e1afa4;
+      background: var(--red-bg);
+    }
+
+    .slide-card {
+      min-height: 190px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      border-left: 5px solid var(--green);
+    }
+
+    .slide-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .arch-item {
+      position: relative;
+      min-height: 130px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .arch-item::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .arch-item:last-child::after {
+      content: "";
+    }
+
+    .code {
+      display: block;
+      overflow-x: auto;
+      border: 1px solid #d8d4ca;
+      border-radius: 8px;
+      background: #2f2e2b;
+      color: #f7f6f2;
+      padding: 12px;
+      font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+    }
+
+    @media (max-width: 980px) {
+      .topbar,
+      .section-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+      }
+
+      .hero-grid,
+      .two,
+      .three,
+      .stats,
+      .architecture {
+        grid-template-columns: 1fr;
+      }
+
+      .phone-shell {
+        width: 100%;
+      }
+
+      .arch-item::after {
+        content: "";
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        width: min(100% - 20px, 1180px);
+      }
+
+      h1 {
+        font-size: 19px;
+      }
+
+      .phone-screen {
+        min-height: 720px;
+      }
+
+      .rating {
+        grid-template-columns: repeat(5, 1fr);
+      }
+
+      .segmented {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap topbar">
+      <div class="brand">
+        <span class="eyebrow">Tokushin survey DX mock</span>
+        <h1>授業後アンケートDX 生徒画面モック</h1>
+        <p class="subtitle">紙アンケートの良さを残しつつ、最終授業日当日の報告・集計・権限分離までつなげる案。</p>
+      </div>
+      <nav aria-label="ページ内ナビゲーション">
+        <a class="tab" href="student_app.html">共有用: 生徒スマホ</a>
+        <a class="tab" href="student_staff_scan_app.html">共有用: 生徒提示QR</a>
+        <a class="tab" href="staff_app.html">共有用: 校舎PC</a>
+        <a class="tab" href="student.html">生徒用を開く</a>
+        <a class="tab" href="staff.html">校舎スタッフ用を開く</a>
+        <a class="tab" href="#student">生徒画面</a>
+        <a class="tab" href="#staff">スタッフ集計</a>
+        <a class="tab" href="#flow">部門別フロー</a>
+        <a class="tab" href="#slides">スライド要点</a>
+        <a class="tab" href="#data">データ設計</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="share">
+      <div class="section-head">
+        <div>
+          <h2>共有用モック</h2>
+          <p class="section-note">静的CSVを読み込むフロントエンドプロトタイプ。社員共有では説明を減らし、生徒用はスマホ、校舎スタッフ用はPC画面として完全に分ける。</p>
+        </div>
+      </div>
+      <div class="grid three">
+        <article class="card">
+          <h3>生徒用: 教室QR読取</h3>
+          <p class="meta">講座カードに出席登録済/未とアンケート済/未を集約し、生徒が教室入口QRを読む方式。</p>
+          <a class="button" href="student_app.html">教室QR版を開く</a>
+        </article>
+        <article class="card">
+          <h3>生徒用: QR提示</h3>
+          <p class="meta">生徒がスマホにQRを表示し、校舎側端末が読み取って入室登録する方式。</p>
+          <a class="button" href="student_staff_scan_app.html">QR提示版を開く</a>
+        </article>
+        <article class="card">
+          <h3>校舎スタッフ用PC画面</h3>
+          <p class="meta">校舎・講座選択を起点に、出席、講座変更、代理対応、アンケート傾向、CSV出力を確認するプロトタイプ。</p>
+          <a class="button" href="staff_app.html">校舎用を開く</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="sitemap">
+      <div class="section-head">
+        <div>
+          <h2>画面サイトマップ</h2>
+          <p class="section-note">共有用モックでは、生徒用と校舎スタッフ用を完全に分ける。</p>
+        </div>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <h3>生徒用</h3>
+          <p class="meta">講座 / 出席登録 / アンケート / カレンダー / お知らせ / 学習ログ。変更表示は休講・日程変更に絞る。</p>
+        </article>
+        <article class="card">
+          <h3>校舎スタッフ用</h3>
+          <p class="meta">講座別管理 / 講座カレンダー / 講座変更 / 代理対応 / 受講コマ / アンケート傾向 / CSV参照 / 出力 / 校舎設定。講座選択は同時刻の別学年・別教室を区別する。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="course-count">
+      <div class="section-head">
+        <div>
+          <h2>追加方針: CSV参照・受講コマ数・変更対応</h2>
+          <p class="section-note">生徒には科目別の受講状況、校舎には基準判定と変更対応を見せる。</p>
+        </div>
+      </div>
+      <div class="grid three">
+        <article class="card">
+          <h3>静的CSV</h3>
+          <p class="meta">students、courses、attendance、course_changesなどを読み込み、画面反映と出力仕様を確認する。coursesは学年・教室も持つ。</p>
+        </article>
+        <article class="card">
+          <h3>生徒側表示</h3>
+          <p class="meta">講座別の出席登録済/未、アンケート済/未、QR入室、アンケート、科目別受講状況を表示。基準値や不足数は出さない。</p>
+        </article>
+        <article class="card">
+          <h3>校舎側表示</h3>
+          <p class="meta">基準未達、休講、日程変更、教室変更、時間変更、代理対応、未入室、アンケート未提出、CSV出力を確認する。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="student">
+      <div class="section-head">
+        <div>
+          <h2>生徒が休み時間中に回答する画面</h2>
+          <p class="subtitle">出席確定画面ではなく、満足度・難易度・理解度・コメントを短時間で回収する画面として設計。</p>
+        </div>
+        <div class="row" style="justify-content:start; flex-wrap:wrap">
+          <span class="chip green">目安 2〜3分</span>
+          <span class="chip blue">最終コマ前</span>
+          <span class="chip amber">提出は原則お願い</span>
+        </div>
+      </div>
+
+      <div class="grid hero-grid">
+        <div class="phone-shell" aria-label="スマートフォン画面モック">
+          <div class="phone-screen">
+            <div class="phone-status">
+              <span>14:42</span>
+              <span>Tokushin</span>
+            </div>
+            <div class="phone-header">
+              <h2>授業アンケート</h2>
+              <p>回答は授業改善と最終回の授業報告に使用します。出席判定とは別管理です。</p>
+            </div>
+            <div class="phone-body">
+              <div id="doneState" class="done-state">
+                <strong>提出済みです</strong>
+                <p class="meta" style="margin:6px 0 0">回答ありがとうございました。出席状況は受付・授業出席の記録で確認されます。</p>
+              </div>
+
+              <div id="surveyForm" class="hidden-after-submit">
+                <div class="notice">
+                  休み時間中に回答してください。未提出の場合はスタッフから声かけすることがあります。
+                </div>
+
+                <div class="course-card">
+                  <div class="row">
+                    <strong>東大現代文 御茶ノ水</strong>
+                    <span class="chip green">回答受付中</span>
+                  </div>
+                  <p class="meta" style="margin:6px 0 0">第1期 最終回 / 2026年5月23日 / 講師A</p>
+                  <p class="meta" style="margin:4px 0 0">期限: 次のコマ開始前まで</p>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>授業の満足度</span>
+                    <span class="required">必須</span>
+                  </div>
+                  <div class="rating" data-choice-group="satisfaction">
+                    <button class="choice small" type="button">1</button>
+                    <button class="choice small" type="button">2</button>
+                    <button class="choice small" type="button">3</button>
+                    <button class="choice small selected" type="button">4</button>
+                    <button class="choice small" type="button">5</button>
+                  </div>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>難易度</span>
+                    <span class="required">必須</span>
+                  </div>
+                  <div class="segmented" data-choice-group="difficulty">
+                    <button class="choice" type="button">易しい</button>
+                    <button class="choice selected" type="button">ちょうどよい</button>
+                    <button class="choice" type="button">難しい</button>
+                  </div>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>理解度</span>
+                    <span class="required">必須</span>
+                  </div>
+                  <div class="rating" data-choice-group="understanding">
+                    <button class="choice small" type="button">1</button>
+                    <button class="choice small" type="button">2</button>
+                    <button class="choice small" type="button">3</button>
+                    <button class="choice small selected" type="button">4</button>
+                    <button class="choice small" type="button">5</button>
+                  </div>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>今日の授業でよかった点</span>
+                    <span class="required">必須</span>
+                  </div>
+                  <textarea aria-label="今日の授業でよかった点">記述の読み方が具体的で、復習するときの見方がわかりました。</textarea>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>学習状況・他塾状況</span>
+                    <span class="meta">任意</span>
+                  </div>
+                  <select aria-label="学習状況・他塾状況">
+                    <option>東大特進中心で進めている</option>
+                    <option>他塾と併用している</option>
+                    <option>学校中心で進めている</option>
+                    <option>まだ決めていない</option>
+                  </select>
+                </div>
+
+                <div class="question">
+                  <div class="question-title">
+                    <span>担任・スタッフに相談したいこと</span>
+                    <span class="meta">任意</span>
+                  </div>
+                  <textarea aria-label="相談したいこと" placeholder="相談したい内容があれば入力"></textarea>
+                </div>
+
+                <div class="submit-area">
+                  <button id="submitSurvey" type="button">回答を提出する</button>
+                  <p class="meta" style="margin:8px 0 0">送信後、回答IDと仮名化された生徒IDで保存されます。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>画面設計のポイント</h3>
+            <ul class="feature-list">
+              <li>
+                <strong>出席判定とは分離</strong>
+                アンケート未提出でも出席を無効にしない。未提出は声かけ対象として扱う。
+              </li>
+              <li>
+                <strong>紙の置き換えに寄せる</strong>
+                最終コマ前の休み時間に終わる分量にし、選択式中心で入力負荷を下げる。
+              </li>
+              <li>
+                <strong>当日報告に使う</strong>
+                満足度、難易度、理解度、コメントを当日中に集計し、授業報告へ反映する。
+              </li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>現行運用から変える点</h3>
+            <ul class="feature-list">
+              <li>
+                <strong>紙回収からデジタル提出へ</strong>
+                後日のExcel手入力をなくし、回答直後に集計可能にする。
+              </li>
+              <li>
+                <strong>欠席者は原則対象外</strong>
+                現状と同じく欠席者には回答を求めない。必要時のみ後日リンクを発行する。
+              </li>
+              <li>
+                <strong>校舎端末にも対応</strong>
+                スマホ利用が難しい生徒向けに、業務用PCや受付端末での回答導線も残す。
+              </li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>質問構成案</h3>
+            <table aria-label="質問構成案">
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>形式</th>
+                  <th>用途</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>満足度</td>
+                  <td>5段階</td>
+                  <td>授業報告、品質把握</td>
+                </tr>
+                <tr>
+                  <td>難易度</td>
+                  <td>3択</td>
+                  <td>講座設計の調整</td>
+                </tr>
+                <tr>
+                  <td>理解度</td>
+                  <td>5段階</td>
+                  <td>フォロー候補の把握</td>
+                </tr>
+                <tr>
+                  <td>コメント</td>
+                  <td>記述</td>
+                  <td>講座別に確認</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card">
+            <h3>提出後に表示する内容</h3>
+            <div class="notice amber">
+              「出席確定」ではなく「提出済み」と表示します。
+            </div>
+            <p class="meta" style="margin:10px 0 0">
+              出席は受付打刻・授業出席確認で管理し、アンケートは授業改善と生徒状況把握のデータとして扱います。
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="staff">
+      <div class="section-head">
+        <div>
+          <h2>スタッフ側の当日集計画面</h2>
+          <p class="subtitle">紙を回収して後日入力する代わりに、講座別の回答状況と傾向を当日中に確認できる状態を作る。</p>
+        </div>
+        <div class="row" style="justify-content:start; flex-wrap:wrap">
+          <button class="secondary" type="button">回答CSV</button>
+          <button class="secondary" type="button">傾向表示</button>
+          <button class="amber" type="button">未回答者確認</button>
+        </div>
+      </div>
+
+      <article class="card">
+        <div class="stats">
+          <div class="stat">
+            <span>対象出席者</span>
+            <strong>38</strong>
+          </div>
+          <div class="stat">
+            <span>回答済み</span>
+            <strong>34</strong>
+          </div>
+          <div class="stat">
+            <span>未回答</span>
+            <strong>4</strong>
+          </div>
+          <div class="stat">
+            <span>欠席</span>
+            <strong>6</strong>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div>
+            <h3>満足度・難易度</h3>
+            <div class="bar-list" aria-label="満足度分布">
+              <div class="bar-row">
+                <span>満足度5</span>
+                <div class="bar"><span style="width:62%"></span></div>
+                <span>21</span>
+              </div>
+              <div class="bar-row">
+                <span>満足度4</span>
+                <div class="bar"><span style="width:29%"></span></div>
+                <span>10</span>
+              </div>
+              <div class="bar-row">
+                <span>満足度3</span>
+                <div class="bar"><span style="width:9%"></span></div>
+                <span>3</span>
+              </div>
+              <div class="bar-row">
+                <span>難しい</span>
+                <div class="bar"><span style="width:38%"></span></div>
+                <span>13</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3>講座別コメント確認</h3>
+            <table aria-label="コメント一覧">
+              <thead>
+                <tr>
+                  <th>分類</th>
+                  <th>コメント</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="chip green">良かった点</span></td>
+                  <td>解答に至るまでの視点が具体的で復習しやすい。</td>
+                </tr>
+                <tr>
+                  <td><span class="chip amber">難易度</span></td>
+                  <td>最後の演習は難しかったが、解説で理解できた。</td>
+                </tr>
+                <tr>
+                  <td><span class="chip blue">要フォロー</span></td>
+                  <td>記述添削の復習方法を個別に相談したい。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="flow">
+      <div class="section-head">
+        <div>
+          <h2>横軸時間・縦軸部門のフロー</h2>
+          <p class="subtitle">スライド貼付用のSVGは <code>mock_app/assets/survey_swimlane_flow.svg</code> にも保存しています。</p>
+        </div>
+        <a class="button secondary" href="assets/survey_swimlane_flow.svg">SVGを開く</a>
+      </div>
+
+      <div class="flow-board" aria-label="部門別タイムライン">
+        <div class="timeline">
+          <div class="time-head">部門 / 時間</div>
+          <div class="time-head">事前準備</div>
+          <div class="time-head">来校・受付</div>
+          <div class="time-head">授業中</div>
+          <div class="time-head">最終コマ前</div>
+          <div class="time-head">授業直後</div>
+          <div class="time-head">事後処理</div>
+
+          <div class="dept">生徒</div>
+          <div></div>
+          <div><div class="flow-card student"><strong>来校</strong>学生証または受講票を提示</div></div>
+          <div><div class="flow-card student"><strong>授業受講</strong>遅刻早退でも出席は認める</div></div>
+          <div><div class="flow-card student"><strong>アンケート回答</strong>休み時間中にスマホ/校舎端末で提出</div></div>
+          <div></div>
+          <div></div>
+
+          <div class="dept">校舎スタッフ</div>
+          <div><div class="flow-card school"><strong>出席簿準備</strong>担当スタッフ・コマ数を確認</div></div>
+          <div><div class="flow-card school"><strong>受付打刻</strong>生徒番号と時刻を記録</div></div>
+          <div><div class="flow-card school"><strong>授業出席確認</strong>紙または管理画面で確認</div></div>
+          <div><div class="flow-card school"><strong>回答案内</strong>最終コマ前に回答を促す</div></div>
+          <div><div class="flow-card school"><strong>未回答確認</strong>必要に応じて声かけ</div></div>
+          <div></div>
+
+          <div class="dept">特進業務</div>
+          <div><div class="flow-card ops"><strong>講座枠確認</strong>講座名・会場・期・時間を確定</div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div><div class="flow-card ops"><strong>当日集計</strong>満足度・難易度・コメントを確認</div></div>
+          <div><div class="flow-card ops"><strong>出力作成</strong>回答CSV・コマ数CSV・報告サマリ</div></div>
+
+          <div class="dept">データ基盤/GAS</div>
+          <div><div class="flow-card data"><strong>マスタ登録</strong>生徒・講座・授業枠を格納</div></div>
+          <div><div class="flow-card data"><strong>即時照合</strong>受付時刻と授業枠を照合</div></div>
+          <div></div>
+          <div><div class="flow-card data"><strong>回答保存</strong>仮名ID・講座IDで保存</div></div>
+          <div><div class="flow-card data"><strong>集計更新</strong>回答状況を即時反映</div></div>
+          <div><div class="flow-card data"><strong>コマ数再計算</strong>週次分と今回分を集計</div></div>
+
+          <div class="dept">POS・Access</div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div><div class="flow-card pos"><strong>CSV取込</strong>学力POS/特進POS/Accessへ反映</div></div>
+
+          <div class="dept">授業報告/分析</div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div><div class="flow-card ops"><strong>報告素材化</strong>コメントと分布を抽出</div></div>
+          <div><div class="flow-card ops"><strong>最終報告</strong>当日中に社内報告へ反映</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="slides">
+      <div class="section-head">
+        <div>
+          <h2>スライド化しやすい要点</h2>
+          <p class="subtitle">そのまま1枚ずつスライドに展開しやすい粒度で整理。</p>
+        </div>
+        <a class="button secondary" href="slide_outline.md">Markdownを開く</a>
+      </div>
+
+      <div class="grid three">
+        <article class="card slide-card">
+          <h3>1. 現状運用</h3>
+          <ul>
+            <li>紙アンケートを一期ごと最終回に実施</li>
+            <li>休み時間に回答・回収</li>
+            <li>後日Excelへ手入力</li>
+            <li>最終回の授業報告に活用</li>
+          </ul>
+        </article>
+        <article class="card slide-card">
+          <h3>2. 課題</h3>
+          <ul>
+            <li>集計が当日即時に使いにくい</li>
+            <li>転記作業と入力ミスが残る</li>
+            <li>生徒情報の置き場所と権限が論点</li>
+            <li>出席管理とは目的が混ざりやすい</li>
+          </ul>
+        </article>
+        <article class="card slide-card">
+          <h3>3. 方針</h3>
+          <ul>
+            <li>アンケートは出席判定から分離</li>
+            <li>2〜3分で終わる設問量</li>
+            <li>当日報告に使える自動集計</li>
+            <li>回答IDと生徒対応表を分離</li>
+          </ul>
+        </article>
+        <article class="card slide-card">
+          <h3>4. 生徒体験</h3>
+          <ul>
+            <li>最終コマ前に回答案内</li>
+            <li>スマホまたは校舎端末で提出</li>
+            <li>満足度・難易度・理解度・コメント</li>
+            <li>送信後は提出済み表示</li>
+          </ul>
+        </article>
+        <article class="card slide-card">
+          <h3>5. スタッフ体験</h3>
+          <ul>
+            <li>回答済み・未回答を即時確認</li>
+            <li>未回答者へ声かけ</li>
+            <li>講座別の分布とコメント確認</li>
+            <li>回答CSV、出席簿CSV、POS取込用CSVを出力</li>
+          </ul>
+        </article>
+        <article class="card slide-card">
+          <h3>6. 権限・実装</h3>
+          <ul>
+            <li>初期PoCはGAS完結案</li>
+            <li>スプレッドシートは権限分離</li>
+            <li>氏名・生徒番号と回答を同居させない</li>
+            <li>AppSheet案はDrive上のPII配置を要確認</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="data">
+      <div class="section-head">
+        <div>
+          <h2>データ・権限設計</h2>
+          <p class="subtitle">AppSheet/GASのどちらでも、先に決めるべき情報の置き場所。</p>
+        </div>
+      </div>
+
+      <div class="architecture">
+        <article class="arch-item">
+          <h3>マスタ</h3>
+          <p class="meta">生徒マスタ、講座マスタ、授業枠、講座登録一覧。学力POSやAccessから出力して取り込む。</p>
+        </article>
+        <article class="arch-item">
+          <h3>回答</h3>
+          <p class="meta">回答ID、仮名化生徒ID、講座ID、区分ID、会場、回答内容、送信時刻を保存。</p>
+        </article>
+        <article class="arch-item">
+          <h3>対応表</h3>
+          <p class="meta">生徒番号・氏名との対応表は校舎または権限者のみに分離。広範囲共有しない。</p>
+        </article>
+        <article class="arch-item">
+          <h3>出力</h3>
+          <p class="meta">回答CSV、コマ数CSV、出席簿CSV、学力POS取り込み用データを生成。</p>
+        </article>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="card">
+          <h3>推奨する初期PoC</h3>
+          <ul class="feature-list">
+            <li>
+              <strong>GAS + スプレッドシート</strong>
+              AppSheetより権限と画面の出し分けを単純化しやすく、Colabや静的モックからも説明しやすい。
+            </li>
+            <li>
+              <strong>回答データと対応表を分離</strong>
+              nagasebros GDrive上に非暗号化の生徒番号・氏名・回答を同居させない。
+            </li>
+            <li>
+              <strong>MailDM権限案も比較対象</strong>
+              暗号化ID中心で運用し、校舎側の対応表で必要時のみ生徒を特定する。
+            </li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Colabでの表示</h3>
+          <p class="meta">リポジトリをクローンしたあと、依存関係なしでこのHTMLを表示できます。</p>
+          <code class="code">from IPython.display import HTML, display
+display(HTML(open("mock_app/index.html", encoding="utf-8").read()))</code>
+          <p class="meta" style="margin:10px 0 0">ローカルでは <code>python main.py</code> で簡易サーバを起動できます。</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const groups = document.querySelectorAll("[data-choice-group]");
+    groups.forEach((group) => {
+      group.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) {
+          return;
+        }
+        group.querySelectorAll("button").forEach((item) => item.classList.remove("selected"));
+        button.classList.add("selected");
+      });
+    });
+
+    const submitButton = document.getElementById("submitSurvey");
+    const surveyForm = document.getElementById("surveyForm");
+    const doneState = document.getElementById("doneState");
+
+    submitButton.addEventListener("click", () => {
+      surveyForm.classList.add("submitted");
+      doneState.classList.add("visible");
+      doneState.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  </script>
+</body>
+</html>

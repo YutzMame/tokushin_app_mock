@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生徒用アプリプロトタイプ</title>
+  <link rel="stylesheet" href="assets/screens.css">
+</head>
+<body data-app="student">
+  <main class="share-student">
+    <section class="phone" aria-label="生徒用スマホアプリ">
+      <div class="phone-screen">
+        <div class="phone-status">
+          <span>生徒用</span>
+          <span>東大特進</span>
+        </div>
+        <div class="phone-header">
+          <h1 id="studentName">読み込み中</h1>
+          <p class="subtle" id="studentVenue">CSVを読み込んでいます</p>
+        </div>
+
+        <nav class="mobile-tabs" aria-label="生徒画面タブ">
+          <button class="mobile-tab active" type="button" data-tab-target="home">講座</button>
+          <button class="mobile-tab" type="button" data-tab-target="checkin">出席登録</button>
+          <button class="mobile-tab" type="button" data-tab-target="survey">アンケート</button>
+          <button class="mobile-tab" type="button" data-tab-target="calendar">カレンダー</button>
+          <button class="mobile-tab" type="button" data-tab-target="notice">お知らせ</button>
+          <button class="mobile-tab" type="button" data-tab-target="log">学習ログ</button>
+        </nav>
+
+        <div class="phone-body">
+          <section class="tab-panel active" data-tab-panel="home">
+            <div class="course-card">
+              <div class="row">
+                <strong id="todayCourseName">今日の授業</strong>
+                <span class="chip blue">本日</span>
+              </div>
+              <p class="meta" id="todayCourseMeta">講座CSVを参照しています</p>
+            </div>
+
+            <h3 style="margin-top:16px">本日の講座</h3>
+            <div id="studentTodayCourses" class="stack"></div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="checkin">
+            <div class="course-card">
+              <div class="row">
+                <strong id="checkinCourseName">出席登録する講座</strong>
+                <span id="checkinCourseStatus" class="chip">読込中</span>
+              </div>
+              <p class="meta" id="checkinCourseMeta">講座を選択してください。</p>
+            </div>
+            <div id="checkinDoneText" class="notice amber">
+              教室入口のQRを読み取って入室登録します。
+            </div>
+            <div class="qr-reader">
+              <div>
+                <div class="qr-code" aria-hidden="true"></div>
+                <p class="meta">教室入口に掲示されるQRの想定</p>
+              </div>
+            </div>
+            <button class="primary" id="scanButton" type="button" style="width:100%; margin-top:12px">QRを読み取って入室</button>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="survey">
+            <div id="surveyDoneText" class="notice amber">
+              回答する講座を選んでください。受付中の講座だけ回答できます。
+            </div>
+            <div id="surveyListPanel">
+              <div class="row section-row">
+                <h3>本日のアンケート</h3>
+                <button class="secondary small" id="togglePastSurveys" type="button">過去分を表示</button>
+              </div>
+              <div id="studentSurveyList" class="stack"></div>
+            </div>
+
+            <div id="surveyFormPanel" class="survey-form-panel is-hidden">
+              <button class="secondary small" id="backToSurveyList" type="button">一覧に戻る</button>
+              <div class="question">
+                <div class="question-title">
+                  <span id="selectedSurveyCourse">東大現代文</span>
+                  <span class="chip green" id="selectedSurveyStatus">回答受付中</span>
+                </div>
+                <p class="meta" id="selectedSurveyMeta">講座を選択するとここに表示されます。</p>
+              </div>
+              <div class="question">
+                <div class="question-title">
+                  <span>満足度</span>
+                  <span class="required">必須</span>
+                </div>
+                <div class="rating" data-choice-group="satisfaction">
+                  <button class="choice" type="button">1</button>
+                  <button class="choice" type="button">2</button>
+                  <button class="choice" type="button">3</button>
+                  <button class="choice selected" type="button">4</button>
+                  <button class="choice" type="button">5</button>
+                </div>
+              </div>
+              <div class="question">
+                <div class="question-title">
+                  <span>難易度</span>
+                  <span class="required">必須</span>
+                </div>
+                <div class="segmented" data-choice-group="difficulty">
+                  <button class="choice" type="button">易しい</button>
+                  <button class="choice selected" type="button">ちょうどよい</button>
+                  <button class="choice" type="button">難しい</button>
+                </div>
+              </div>
+              <div class="question">
+                <div class="question-title">
+                  <span>コメント</span>
+                  <span class="required">必須</span>
+                </div>
+                <textarea id="studentComment">説明が具体的で、復習の進め方がわかりました。</textarea>
+              </div>
+              <button class="primary" id="submitSurvey" type="button" style="width:100%; margin-top:12px">アンケートを提出して退室</button>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="calendar">
+            <h3>昨日・今日・明日の講座</h3>
+            <div id="studentDayStrip" class="day-strip"></div>
+            <h3 style="margin-top:16px">受講登録カレンダー</h3>
+            <div id="studentCalendar" class="calendar-grid"></div>
+            <div id="studentSelectedDay" class="stack" style="margin-top:12px"></div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="notice">
+            <h3>講座変更・お知らせ</h3>
+            <div id="studentChanges" class="stack"></div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="log">
+            <div class="notice">
+              科目別の受講状況です。基準値や未達アラートは生徒画面には表示しません。
+            </div>
+            <div id="studentSubjectBars" class="subject-list"></div>
+            <div class="row-card" style="margin-top:12px">
+              <strong>今後の拡張案</strong>
+              <p class="meta">模試成績や学習ログとの連携は可能ですが、初期表示は受講状況中心にします。</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>
