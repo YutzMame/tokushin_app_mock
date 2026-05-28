@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "tokushin_v2_state";
-  const STATE_SCHEMA = 4;
+  const STATE_SCHEMA = 5;
   const APP_DATE = "2026-05-28";
   const CSV_FILES = {
     students: "students_v2.csv",
@@ -327,7 +327,7 @@
     state.actions.unshift({
       action_id: makeId("ACT-V2"),
       role: action.role || "staff",
-      actor: action.actor || "staff-takahashi",
+      actor: action.actor || "staff-tanaka",
       action_type: action.action_type,
       target_type: action.target_type || "",
       target_id: action.target_id || "",
@@ -343,7 +343,7 @@
     state.selected ||= {};
     state.ui ||= {};
     state.selected.studentId ||= state.students[0]?.student_id || "";
-    state.selected.staffVenue ||= "御茶ノ水";
+    state.selected.staffVenue ||= "A校";
     const firstStaffCourse = sortCourses(
       state.courses.filter((course) => course.venue === state.selected.staffVenue && course.date === APP_DATE)
     )[0];
@@ -367,7 +367,7 @@
     state.ui.masterFilter ||= { students: "", courses: "", staff: "", applications: "" };
     state.ui.riskView ||= "all";
     state.ui.readNotices ||= [];
-    state.selected.tabletVenue ||= "御茶ノ水";
+    state.selected.tabletVenue ||= "A校";
     const firstTabletCourse = sortCourses(
       state.courses.filter((course) => course.venue === state.selected.tabletVenue && course.date === APP_DATE)
     )[0];
@@ -1592,7 +1592,7 @@
     attendance.checkin_time = attendance.checkin_time || nowStamp().slice(11);
     attendance.method = "代理";
     attendance.exception_note = reason || "スマホ忘れ本人確認済";
-    attendance.corrected_by = "staff-takahashi";
+    attendance.corrected_by = "staff-tanaka";
     attendance.corrected_reason = attendance.exception_note;
     attendance.confirmed_status = "確認済";
     addAction({
@@ -1647,7 +1647,7 @@
     response.comment = qs("#modalPaperComment").value.trim() || "紙回答を代理入力";
     response.submitted_at = nowStamp();
     response.input_method = "paper";
-    response.input_by = "staff-takahashi";
+    response.input_by = "staff-tanaka";
     attendanceFor(studentId, courseId, true).survey_status = "提出済";
     addAction({
       role: "staff",
@@ -1945,7 +1945,7 @@
     }
     if (type === "教室変更") {
       const rooms = state.courses.filter((item) => item.venue === course.venue).map((item) => item.room);
-      const extras = course.venue === "大阪" ? ["201", "202"] : ["501", "502", "503", "504"];
+      const extras = course.venue === "C校" ? ["301", "302"] : ["101", "102", "103", "104", "105"];
       return [...new Set([course.room, ...rooms, ...extras])].filter(Boolean).sort();
     }
     if (type === "講師変更") {
@@ -2137,7 +2137,7 @@
       impact_count: String(courseStudentIds(courseId).length),
       visible_to_student: visible,
       created_at: nowStamp(),
-      created_by: "staff-takahashi",
+      created_by: "staff-tanaka",
       confirmed_status: "確認済",
     };
     state.changes.unshift(change);
@@ -2283,7 +2283,7 @@
     attendance.checkin_status = status;
     attendance.checkin_time = status === "入室済" ? attendance.checkin_time || nowStamp().slice(11) : "";
     attendance.method = status === "入室済" ? (attendance.method && attendance.method !== "未実施" ? attendance.method : "校舎修正") : "校舎修正";
-    attendance.corrected_by = "staff-takahashi";
+    attendance.corrected_by = "staff-tanaka";
     attendance.corrected_reason = status === "欠席" ? "校舎確認" : "校舎画面で修正";
     attendance.confirmed_status = "確認済";
     addAction({

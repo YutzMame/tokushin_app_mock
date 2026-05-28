@@ -54,3 +54,41 @@ def show_teacher_app_v2() -> None:
 
 def show_tablet_qr_app_v2() -> None:
     _display("tablet_qr_app_v2.html")
+
+
+_SERVER = None
+
+
+def serve_v2(port: int = 8000):
+    """mock_app_v2 をローカル配信し、別ウィンドウで開くリンクを出す（Colab推奨）。
+
+    インラインのHTML表示と違い、実データ（data/*.csv）を fetch で読み込み、
+    画面間リンクも動くため、大きな別ウィンドウで機能を確認できる。
+    """
+    global _SERVER
+    import functools
+    import http.server
+    import socketserver
+    import threading
+
+    if _SERVER is not None:
+        try:
+            _SERVER.shutdown()
+            _SERVER.server_close()
+        except Exception:
+            pass
+        _SERVER = None
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(BASE_DIR))
+    socketserver.TCPServer.allow_reuse_address = True
+    _SERVER = socketserver.TCPServer(("", port), handler)
+    threading.Thread(target=_SERVER.serve_forever, daemon=True).start()
+
+    try:
+        from google.colab.output import serve_kernel_port_as_window
+
+        print("↓ このリンクが別ウィンドウで開く入口です（実データCSVを読み込み、機能を確認できます）")
+        serve_kernel_port_as_window(port, path="/index.html")
+    except Exception:
+        print(f"ローカルで確認: http://localhost:{port}/index.html")
+    return _SERVER
