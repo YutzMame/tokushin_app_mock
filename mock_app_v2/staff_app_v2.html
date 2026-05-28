@@ -34,7 +34,16 @@
           <button type="button" data-tab-target="staff-master" data-staff-master-view="settings">受講コマ基準設定</button>
         </div>
       </div>
-      <button class="tab-button" type="button" data-tab-target="staff-risk">異常・声かけ</button>
+      <div class="nav-item has-menu">
+        <button class="tab-button" type="button" data-tab-target="staff-risk">異常・声かけ</button>
+        <div class="nav-menu" role="menu" aria-label="異常・声かけメニュー">
+          <button type="button" data-tab-target="staff-risk" data-risk-view="all">すべて</button>
+          <button type="button" data-tab-target="staff-risk" data-risk-view="anomaly">異常検知</button>
+          <button type="button" data-tab-target="staff-risk" data-risk-view="shortage">基準未達</button>
+          <button type="button" data-tab-target="staff-risk" data-risk-view="voice">声かけ</button>
+          <button type="button" data-tab-target="staff-risk" data-risk-view="log">操作履歴</button>
+        </div>
+      </div>
       <button class="tab-button" type="button" data-tab-target="staff-export">データ入出力</button>
     </nav>
 
@@ -61,8 +70,11 @@
           <div class="panel-head"><h2>リアルタイム入室</h2></div>
           <div class="panel-body">
             <div class="metric-grid" id="realtimeMetrics"></div>
-            <div class="search-row" style="margin-top:12px">
-              <label>絞り込み<input id="realtimeSearch" placeholder="氏名・生徒番号・講座・学年・高校"></label>
+            <div class="filters" style="margin-top:12px">
+              <label style="min-width:220px">講座<select id="realtimeCourse"></select></label>
+              <label style="min-width:120px">学年<select id="realtimeGrade"></select></label>
+              <label class="setting-toggle"><input id="realtimeShowEntered" type="checkbox" checked>入室済</label>
+              <label class="setting-toggle"><input id="realtimeShowNotEntered" type="checkbox" checked>未入室</label>
             </div>
             <div class="notice" style="margin-top:10px">QR読込・代理・紙回答で入室した生徒を、講座・学年に関係なく新しい順に表示します。生徒提示QRの読取（タブレット）や生徒側登録もリアルタイムに反映します。</div>
             <div id="realtimeList" class="stack" style="margin-top:12px"></div>

@@ -66,6 +66,7 @@
             <div class="panel">
               <div class="panel-head"><h2>出席登録</h2></div>
               <div class="panel-body">
+                <button class="small" type="button" data-tab-target="student-home" style="margin-bottom:10px">← 講座一覧へ戻る</button>
                 <label>対象講座<select id="studentAttendanceCourseSelect"></select></label>
                 <div class="segmented" style="margin:12px 0">
                   <button class="choice selected" type="button" data-attendance-mode="read">QRを読み取る</button>
@@ -93,27 +94,9 @@
                 <button class="small" id="studentTogglePastSurvey" type="button">回答履歴</button>
               </div>
               <div class="panel-body">
-                <div id="studentSurveyOpenList" class="stack"></div>
+                <div class="notice">回答する講座の「この講座に回答」を押すと、回答フォームが開きます。</div>
+                <div id="studentSurveyOpenList" class="stack" style="margin-top:10px"></div>
                 <div id="studentSurveyHistory" class="stack is-hidden"></div>
-              </div>
-            </div>
-
-            <div class="panel" style="margin-top:12px">
-              <div class="panel-head">
-                <h2 id="surveyCourseTitle">回答フォーム</h2>
-                <span class="chip" id="studentSurveyStatusChip">未選択</span>
-              </div>
-              <div class="panel-body">
-                <div id="surveyDraftNotice" class="notice amber"></div>
-                <label>満足度<select id="surveySatisfaction"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
-                <label style="margin-top:10px">難易度<select id="surveyDifficulty"><option>易しい</option><option selected>ちょうどよい</option><option>難しい</option></select></label>
-                <label style="margin-top:10px">理解度<select id="surveyUnderstanding"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
-                <label style="margin-top:10px">コメント<textarea id="studentSurveyComment">記述の方針が整理できました。</textarea></label>
-                <label style="margin-top:10px">相談希望<select id="studentSurveyConsult"><option value="no">なし</option><option value="yes">あり</option></select></label>
-                <div class="actions" style="margin-top:10px">
-                  <button id="saveSurveyDraft" type="button">一時保存</button>
-                  <button class="primary" id="submitSurvey" type="button">提出</button>
-                </div>
               </div>
             </div>
           </section>
@@ -122,8 +105,14 @@
             <div class="panel">
               <div class="panel-head"><h2>受講カレンダー</h2></div>
               <div class="panel-body">
-                <div class="segmented" id="studentCalendarDays"></div>
-                <div id="studentCalendarCourses" class="stack" style="margin-top:12px"></div>
+                <div class="cal-nav">
+                  <button class="small" type="button" data-cal-month="prev">◀</button>
+                  <strong id="studentCalendarLabel"></strong>
+                  <button class="small" type="button" data-cal-month="next">▶</button>
+                </div>
+                <div id="studentCalendarGrid" class="cal-grid"></div>
+                <h3 class="section-title" id="studentCalendarDayLabel" style="margin:14px 0 8px"></h3>
+                <div id="studentCalendarCourses" class="stack"></div>
               </div>
             </div>
           </section>

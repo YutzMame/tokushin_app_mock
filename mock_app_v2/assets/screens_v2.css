@@ -880,6 +880,78 @@ table.dense td {
   display: block;
 }
 
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-head {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 58px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  text-align: left;
+  overflow: hidden;
+}
+
+.cal-cell.empty {
+  border: 0;
+  background: transparent;
+}
+
+.cal-cell.has-course {
+  border-color: #bcd2f5;
+  background: var(--blue-soft);
+}
+
+.cal-cell.today .cal-date {
+  color: var(--blue);
+}
+
+.cal-cell.selected {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-soft);
+}
+
+.cal-date {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cal-course {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #174aa5;
+}
+
+.cal-more {
+  font-size: 10px;
+  color: var(--muted);
+}
+
 .tab-badge {
   display: inline-grid;
   place-items: center;
