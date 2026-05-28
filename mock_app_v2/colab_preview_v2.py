@@ -58,13 +58,16 @@ def show_tablet_qr_app_v2() -> None:
 
 _SERVER = None
 
+PAGES = [
+    ("生徒用", "/student_app_v2.html"),
+    ("校舎スタッフ用", "/staff_app_v2.html"),
+    ("講師・教室担当用", "/teacher_app_v2.html"),
+    ("校舎QR読取タブレット", "/tablet_qr_app_v2.html"),
+]
 
-def serve_v2(port: int = 8000):
-    """mock_app_v2 をローカル配信し、別ウィンドウで開くリンクを出す（Colab推奨）。
 
-    インラインのHTML表示と違い、実データ（data/*.csv）を fetch で読み込み、
-    画面間リンクも動くため、大きな別ウィンドウで機能を確認できる。
-    """
+def _start_server(port: int):
+    """mock_app_v2 をローカル配信するバックグラウンドサーバを起動（既存は停止）。"""
     global _SERVER
     import functools
     import http.server
@@ -83,12 +86,23 @@ def serve_v2(port: int = 8000):
     socketserver.TCPServer.allow_reuse_address = True
     _SERVER = socketserver.TCPServer(("", port), handler)
     threading.Thread(target=_SERVER.serve_forever, daemon=True).start()
+    return _SERVER
 
+
+def serve_links_v2(port: int = 8000):
+    """4画面（生徒用・校舎用・講師用・タブレット）を別ウィンドウで開くリンクを発行。
+
+    実ディレクトリを配信するため data/*.csv を読み込み、機能を実際に操作できる。
+    """
+    _start_server(port)
     try:
         from google.colab.output import serve_kernel_port_as_window
 
-        print("↓ このリンクが別ウィンドウで開く入口です（実データCSVを読み込み、機能を確認できます）")
-        serve_kernel_port_as_window(port, path="/index.html")
+        for label, path in PAGES:
+            print(f"▼ {label}（別ウィンドウで開く）")
+            serve_kernel_port_as_window(port, path=path)
     except Exception:
-        print(f"ローカルで確認: http://localhost:{port}/index.html")
+        print("Colab外のためローカルURLを表示します:")
+        for label, path in PAGES:
+            print(f"  {label}: http://localhost:{port}{path}")
     return _SERVER
