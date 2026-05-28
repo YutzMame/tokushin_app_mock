@@ -1,0 +1,16 @@
+attendance_id,student_id,course_id,checkin_status,checkin_time,method,checkout_status,survey_status,exception_note,corrected_by,corrected_reason,confirmed_status
+ATT-V2-001,STU-V2-001,C-V2-20260527-ENG-O,入室済,17:52,QR,退室済,提出済,,,確認済
+ATT-V2-002,STU-V2-014,C-V2-20260527-ENG-O,欠席,,未実施,未退室,対象外,事前欠席連絡あり,,,確認済
+ATT-V2-003,STU-V2-001,C-V2-20260528-JPN-O,入室済,14:55,QR,退室済,提出済,,,確認済
+ATT-V2-004,STU-V2-014,C-V2-20260528-JPN-O,未入室,,未実施,未退室,未提出,,,,未確認
+ATT-V2-005,STU-V2-021,C-V2-20260528-JPN-O,入室済,15:02,QR,退室済,提出済,,,確認済
+ATT-V2-006,STU-V2-027,C-V2-20260528-JPN-O,入室済,15:08,代理,未退室,紙回収待ち,スマホ忘れ受付対応,staff-takahashi,本人確認済,確認済
+ATT-V2-007,STU-V2-033,C-V2-20260528-JPN-O,欠席,,未実施,未退室,対象外,初日欠席連絡あり,,,確認済
+ATT-V2-008,STU-V2-072,C-V2-20260528-JPN2-O,入室済,14:58,QR,未退室,未提出,,,,未確認
+ATT-V2-009,STU-V2-073,C-V2-20260528-JPN2-O,未入室,,未実施,未退室,未提出,,,,未確認
+ATT-V2-010,STU-V2-001,C-V2-20260528-MATH-O,入室済,17:14,QR,未退室,未提出,,,,未確認
+ATT-V2-011,STU-V2-014,C-V2-20260528-MATH-O,入室済,17:18,QR,未退室,未提出,,,,未確認
+ATT-V2-012,STU-V2-021,C-V2-20260528-MATH-O,未入室,,未実施,未退室,未提出,,,,未確認
+ATT-V2-013,STU-V2-001,C-V2-20260528-PHY-O,入室済,18:02,QR,未退室,未提出,同時間帯重複候補,,,未確認
+ATT-V2-014,STU-V2-033,C-V2-20260528-JPN2-O,入室済,14:59,QR,未退室,未提出,未申込講座への打刻候補,,,未確認
+ATT-V2-015,STU-V2-052,C-V2-20260529-MATH-OS,未入室,,未実施,未退室,未提出,,,,未確認

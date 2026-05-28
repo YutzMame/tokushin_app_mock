@@ -1,0 +1,4 @@
+note_id,teacher_id,course_id,note_type,student_id,content,shared_to_staff,status,created_at
+NOTE-V2-001,T-JPN-01,C-V2-20260528-JPN-O,遅刻メモ,STU-V2-027,15分ほど遅れて着席,yes,共有済,2026-05-28 15:20
+NOTE-V2-002,T-JPN-01,C-V2-20260528-JPN-O,配布物メモ,STU-V2-033,欠席者用プリントを校舎受付へ預ける,yes,共有済,2026-05-28 17:10
+NOTE-V2-003,T-MATH-01,C-V2-20260528-MATH-O,次回メモ,,小問集合の解説時間を延ばす,no,下書き,2026-05-28 19:30

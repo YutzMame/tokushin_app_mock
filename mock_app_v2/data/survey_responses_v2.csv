@@ -1,0 +1,6 @@
+response_id,student_id,course_id,status,satisfaction,difficulty,understanding,comment,consultation,submitted_at,input_method,input_by
+SR-V2-001,STU-V2-001,C-V2-20260527-ENG-O,提出済,4,ちょうどよい,4,長文の読み方が整理できました,no,2026-05-27 20:04,app,student
+SR-V2-002,STU-V2-001,C-V2-20260528-JPN-O,提出済,5,難しい,4,記述の方針が明確になりました,no,2026-05-28 17:05,app,student
+SR-V2-003,STU-V2-021,C-V2-20260528-JPN-O,提出済,4,ちょうどよい,5,添削例が参考になりました,yes,2026-05-28 17:06,app,student
+SR-V2-004,STU-V2-027,C-V2-20260528-JPN-O,紙回収待ち,,,,紙で回収予定,no,,paper,staff
+SR-V2-005,STU-V2-072,C-V2-20260528-JPN2-O,下書き,4,ちょうどよい,3,途中まで入力,no,,app,student

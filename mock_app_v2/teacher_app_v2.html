@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>講師・教室担当 v2</title>
+  <link rel="stylesheet" href="assets/screens_v2.css">
+</head>
+<body data-app="teacher-v2">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">講</div>
+      <div>
+        <h1>講師・教室担当用 v2</h1>
+        <p>担当講座、授業中管理、授業後振り返り</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <select id="teacherSelect" aria-label="講師選択"></select>
+      <select id="teacherCourseSelect" aria-label="講座選択"></select>
+      <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
+      <a class="button-link" href="index.html">入口</a>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <nav class="side-nav" aria-label="講師タブ">
+      <button class="tab-button active" type="button" data-tab-target="teacher-courses">講座一覧</button>
+      <button class="tab-button" type="button" data-tab-target="teacher-class">授業中管理</button>
+      <button class="tab-button" type="button" data-tab-target="teacher-review">授業後振り返り</button>
+    </nav>
+    <div>
+      <section class="tab-panel active" data-tab-panel="teacher-courses">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>講座一覧</h2>
+            <label class="row" style="width:auto"><input id="todayOnlyToggle" type="checkbox" checked style="width:auto">本日のみ</label>
+          </div>
+          <div class="panel-body"><div id="teacherCourseList" class="grid-3"></div></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="teacher-class">
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head"><h2>出席状況</h2></div>
+            <div class="panel-body">
+              <div id="teacherClassSummary" class="metric-grid"></div>
+              <table style="margin-top:12px"><thead><tr><th>生徒</th><th>出席</th><th>メモ</th></tr></thead><tbody id="teacherAttendanceRows"></tbody></table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>遅刻・途中入室メモ</h2></div>
+            <div class="panel-body">
+              <label>生徒<select id="teacherLateStudent"></select></label>
+              <label style="margin-top:10px">種別<select id="teacherLateType"><option>遅刻メモ</option><option>途中入室</option><option>途中退室</option><option>体調不良</option></select></label>
+              <label style="margin-top:10px">内容<textarea id="teacherLateContent">授業開始後に着席。校舎スタッフへ共有。</textarea></label>
+              <button class="primary" id="saveTeacherNote" type="button" style="width:100%">メモ保存</button>
+              <div id="teacherNoteRows" class="stack" style="margin-top:12px"></div>
+            </div>
+          </section>
+        </div>
+        <section class="panel" style="margin-top:14px">
+          <div class="panel-head"><h2>配布物・欠席者メモ</h2></div>
+          <div class="panel-body"><div id="teacherMaterialsRows" class="grid-3"></div></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="teacher-review">
+        <div class="grid-2">
+          <section class="panel">
+            <div class="panel-head"><h2>アンケート傾向</h2></div>
+            <div class="panel-body">
+              <div id="teacherSurveySummary" class="metric-grid"></div>
+              <div id="teacherTrendPanel" class="stack" style="margin-top:12px"></div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>次回へのメモ</h2></div>
+            <div class="panel-body">
+              <textarea id="teacherNextMemo">次回は記述演習の時間を長めに取り、答案比較を扱う。</textarea>
+              <button class="primary" id="saveTeacherNextMemo" type="button" style="width:100%; margin-top:10px">保存</button>
+              <div id="teacherReviewNotes" class="stack" style="margin-top:12px"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal">
+      <div class="modal-head"><h2 id="modalTitle">講座詳細</h2><button type="button" data-close-modal>閉じる</button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="assets/app_v2.js"></script>
+</body>
+</html>

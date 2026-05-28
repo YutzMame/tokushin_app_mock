@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生徒用 v2</title>
+  <link rel="stylesheet" href="assets/screens_v2.css">
+</head>
+<body data-app="student-v2">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">生</div>
+      <div>
+        <h1>生徒用アプリ v2</h1>
+        <p id="studentProfileMini">CSV読込中</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <select id="studentSelect" aria-label="表示生徒"></select>
+      <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
+      <a class="button-link" href="index.html">入口</a>
+    </div>
+  </header>
+
+  <main class="wrap phone-stage">
+    <section class="phone" aria-label="生徒用スマホ画面">
+      <div class="phone-screen">
+        <div class="phone-head">
+          <h1 id="studentName">読み込み中</h1>
+          <p class="meta" id="studentVenue">講座情報を読み込んでいます</p>
+        </div>
+        <nav class="mobile-tabs" aria-label="生徒用タブ">
+          <button class="tab-button active" type="button" data-tab-target="student-home">ホーム</button>
+          <button class="tab-button" type="button" data-tab-target="student-attendance">出席</button>
+          <button class="tab-button" type="button" data-tab-target="student-survey">アンケート</button>
+          <button class="tab-button" type="button" data-tab-target="student-calendar">カレンダー</button>
+          <button class="tab-button" type="button" data-tab-target="student-log">学習ログ</button>
+          <button class="tab-button" type="button" data-tab-target="student-settings">設定</button>
+        </nav>
+
+        <div class="phone-body">
+          <section class="tab-panel active" data-tab-panel="student-home">
+            <div class="segmented" style="margin-bottom:12px">
+              <button class="choice selected" type="button" data-student-course-view="today">本日の講座</button>
+              <button class="choice" type="button" data-student-course-view="all">講座一覧</button>
+            </div>
+            <div id="studentTodaySection">
+              <h2 class="section-title" style="margin:0 0 10px">本日の講座</h2>
+              <div id="studentTodayList" class="stack"></div>
+            </div>
+            <div id="studentAllSection" class="is-hidden">
+              <h2 class="section-title" style="margin:0 0 10px">講座一覧</h2>
+              <div id="studentCourseList" class="stack"></div>
+            </div>
+            <h2 class="section-title" style="margin:16px 0 10px">お知らせ</h2>
+            <div id="studentNotices" class="stack"></div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-attendance">
+            <div class="panel">
+              <div class="panel-head"><h2>出席登録</h2></div>
+              <div class="panel-body">
+                <label>対象講座<select id="studentAttendanceCourseSelect"></select></label>
+                <div class="segmented" style="margin:12px 0">
+                  <button class="choice selected" type="button" data-attendance-mode="read">QRを読み取る</button>
+                  <button class="choice" type="button" data-attendance-mode="present">QRを提示する</button>
+                </div>
+                <div id="studentQrReadPane">
+                  <div id="studentQrReadCourse" class="notice"></div>
+                  <div class="qr-box" style="margin-top:10px"><div class="qr-mark" aria-hidden="true"></div></div>
+                  <button class="primary" id="studentScanButton" type="button" style="width:100%; margin-top:10px">教室QRで入室登録</button>
+                </div>
+                <div id="studentQrPresentPane" class="is-hidden">
+                  <div class="qr-box"><div class="qr-mark" id="studentPresentQr" aria-hidden="true"></div></div>
+                  <p class="meta" id="studentPresentMeta" style="margin-top:8px"></p>
+                  <button id="studentQrRefresh" type="button" style="width:100%; margin-top:10px">QRを更新</button>
+                </div>
+                <div id="studentCheckinStatus" class="notice amber" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-survey">
+            <div class="panel">
+              <div class="panel-head">
+                <h2>未回答・受付中</h2>
+                <button class="small" id="studentTogglePastSurvey" type="button">回答履歴</button>
+              </div>
+              <div class="panel-body">
+                <div id="studentSurveyOpenList" class="stack"></div>
+                <div id="studentSurveyHistory" class="stack is-hidden"></div>
+              </div>
+            </div>
+
+            <div class="panel" style="margin-top:12px">
+              <div class="panel-head">
+                <h2 id="surveyCourseTitle">回答フォーム</h2>
+                <span class="chip" id="studentSurveyStatusChip">未選択</span>
+              </div>
+              <div class="panel-body">
+                <div id="surveyDraftNotice" class="notice amber"></div>
+                <label>満足度<select id="surveySatisfaction"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
+                <label style="margin-top:10px">難易度<select id="surveyDifficulty"><option>易しい</option><option selected>ちょうどよい</option><option>難しい</option></select></label>
+                <label style="margin-top:10px">理解度<select id="surveyUnderstanding"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
+                <label style="margin-top:10px">コメント<textarea id="studentSurveyComment">記述の方針が整理できました。</textarea></label>
+                <label style="margin-top:10px">相談希望<select id="studentSurveyConsult"><option value="no">なし</option><option value="yes">あり</option></select></label>
+                <div class="actions" style="margin-top:10px">
+                  <button id="saveSurveyDraft" type="button">一時保存</button>
+                  <button class="primary" id="submitSurvey" type="button">提出</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-calendar">
+            <div class="panel">
+              <div class="panel-head"><h2>受講カレンダー</h2></div>
+              <div class="panel-body">
+                <div class="segmented" id="studentCalendarDays"></div>
+                <div id="studentCalendarCourses" class="stack" style="margin-top:12px"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-log">
+            <div class="panel">
+              <div class="panel-head"><h2>科目別受講状況</h2></div>
+              <div class="panel-body"><div id="studentSubjectBars" class="stack"></div></div>
+            </div>
+            <div class="panel" style="margin-top:12px">
+              <div class="panel-head"><h2>受講履歴</h2></div>
+              <div class="panel-body">
+                <table>
+                  <thead><tr><th>講座</th><th>出席</th><th>アンケート</th></tr></thead>
+                  <tbody id="studentHistoryRows"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-settings">
+            <div class="panel">
+              <div class="panel-head"><h2>初期設定</h2></div>
+              <div class="panel-body">
+                <div class="form-grid" style="grid-template-columns:1fr">
+                  <label>生徒番号<input id="studentNumber" value="12345678"></label>
+                  <label>パスワード<input id="studentPassword" type="password" value="abcdefgh"></label>
+                </div>
+                <button class="primary" id="studentLoginButton" type="button" style="width:100%; margin-top:10px">登録内容を確認</button>
+                <div id="studentProfile" class="notice" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal">
+      <div class="modal-head"><h2 id="modalTitle">講座詳細</h2><button type="button" data-close-modal>閉じる</button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="assets/app_v2.js"></script>
+</body>
+</html>

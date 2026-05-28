@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>校舎QR読取タブレット v2</title>
+  <link rel="stylesheet" href="assets/screens_v2.css">
+</head>
+<body data-app="tablet-v2">
+  <header class="topbar compact">
+    <div class="brand">
+      <div class="brand-mark">QR</div>
+      <div>
+        <h1>校舎QR読取タブレット</h1>
+        <p>生徒提示QRを読み取り、入室をリアルタイム表示</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <select id="tabletVenueSelect" aria-label="校舎選択"></select>
+      <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
+      <a class="button-link" href="index.html">入口</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="panel-head"><h2>生徒QR読取</h2></div>
+      <div class="panel-body">
+        <div class="notice">生徒側アプリの「QRを提示する」を、この校舎タブレットで読み取る方式です。生徒が教室QRを読む方式と併用できます（運用方式は未確定のため両方を実装）。</div>
+        <div class="grid-2" style="margin-top:12px">
+          <div>
+            <div class="search-row">
+              <label>生徒検索<input id="tabletSearch" placeholder="氏名・生徒番号・学年・高校"></label>
+            </div>
+            <label style="margin-top:10px">生徒<select id="tabletStudent"></select></label>
+            <label style="margin-top:10px">対象講座<select id="tabletCourse"></select></label>
+            <button class="primary" id="tabletScanButton" type="button" style="width:100%; margin-top:12px">読み取って入室登録</button>
+          </div>
+          <div>
+            <div class="qr-box"><div class="qr-mark" aria-hidden="true"></div></div>
+            <div id="tabletReadResult" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:14px">
+      <div class="panel-head"><h2>リアルタイム入室状況（顔・氏名照合用）</h2></div>
+      <div class="panel-body">
+        <div class="metric-grid" id="tabletMetrics"></div>
+        <div class="notice" style="margin-top:12px">入室登録した生徒を、学年・講座に関係なく新しい順に表示します。氏名・高校・学年・受講コマ数・過去出席歴・各種フラグで、生徒の顔と名前を一致させます。生徒側・他端末の登録もリアルタイムに反映します。</div>
+        <div id="tabletRoster" class="roster-grid" style="margin-top:12px"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal">
+      <div class="modal-head"><h2 id="modalTitle">講座詳細</h2><button type="button" data-close-modal>閉じる</button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="assets/app_v2.js"></script>
+</body>
+</html>

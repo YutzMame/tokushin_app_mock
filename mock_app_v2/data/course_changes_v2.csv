@@ -1,0 +1,6 @@
+change_id,course_id,change_type,before_value,after_value,reason,impact_count,visible_to_student,created_at,created_by,confirmed_status
+CHG-V2-001,C-V2-20260528-MATH-O,教室変更,504,503,教室利用調整,3,no,2026-05-27 10:00,staff-takahashi,確認済
+CHG-V2-002,C-V2-20260530-CHEM-O,日程変更,2026-05-30 13:00,2026-06-02 13:00,講師都合,1,yes,2026-05-27 11:00,staff-sasaki,確認済
+CHG-V2-003,C-V2-20260530-WH-O,休講,実施,休講,校舎行事のため,0,yes,2026-05-27 12:00,staff-takahashi,確認済
+CHG-V2-004,C-V2-20260531-MATH-O,時間変更,13:00-16:00,13:30-16:30,前講座延長対応,0,yes,2026-05-27 13:00,staff-takahashi,未確認
+CHG-V2-005,C-V2-20260601-ENG-N,講師変更,伊藤先生,吉田先生,講師移動対応,0,no,2026-05-27 14:00,staff-tamura,確認済

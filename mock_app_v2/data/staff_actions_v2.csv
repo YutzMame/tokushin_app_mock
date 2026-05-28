@@ -1,0 +1,5 @@
+action_id,role,actor,action_type,target_type,target_id,before_value,after_value,reason,created_at
+ACT-V2-001,staff,staff-takahashi,代理入室,attendance,ATT-V2-006,未入室,入室済,スマホ忘れ本人確認済,2026-05-28 15:08
+ACT-V2-002,staff,staff-sasaki,講座変更,course,C-V2-20260530-CHEM-O,2026-05-30 13:00,2026-06-02 13:00,講師都合,2026-05-27 11:00
+ACT-V2-003,staff,staff-takahashi,声かけ予定,student,STU-V2-014,未対応,対応予定,数学コマ数不足,2026-05-28 12:00
+ACT-V2-004,teacher,T-JPN-01,授業メモ,course,C-V2-20260528-JPN-O,,共有済,記述演習の時間を次回多めに取る,2026-05-28 17:20

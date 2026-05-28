@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>v2 出席管理・授業後アンケート</title>
+  <link rel="stylesheet" href="assets/screens_v2.css">
+</head>
+<body data-app="hub-v2">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">v2</div>
+        <div>
+          <h1>出席管理・授業後アンケート</h1>
+          <p>CSV / localStorage / CSV出力</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="role-grid" aria-label="ロール選択">
+        <a class="role-link" href="student_app_v2.html">
+          <strong>生徒用</strong>
+          <span class="meta">講座確認、出席登録、アンケート、学習ログ</span>
+          <span class="chip blue">スマホ想定</span>
+        </a>
+        <a class="role-link" href="staff_app_v2.html">
+          <strong>校舎スタッフ</strong>
+          <span class="meta">出席、変更、代理対応、異常、声かけ、CSV出力</span>
+          <span class="chip green">PC想定</span>
+        </a>
+        <a class="role-link" href="teacher_app_v2.html">
+          <strong>講師・教室担当</strong>
+          <span class="meta">担当講座、授業中メモ、アンケート傾向</span>
+          <span class="chip amber">授業運営</span>
+        </a>
+        <a class="role-link" href="tablet_qr_app_v2.html">
+          <strong>校舎QR読取タブレット</strong>
+          <span class="meta">生徒提示QR読取、リアルタイム入室状況（顔・氏名照合）</span>
+          <span class="chip">校舎据置</span>
+        </a>
+      </section>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="panel-head">
+          <h2>データ状態</h2>
+          <div class="actions">
+            <button class="small" type="button" id="hubRefresh">再読込</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="metric-grid" id="hubRoleCounts"></div>
+          <div class="grid-2" style="margin-top:14px">
+            <div class="panel">
+              <div class="panel-head"><h3>参照CSV</h3></div>
+              <div class="panel-body"><div id="hubDataStatus" class="stack"></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3>最近の操作</h3></div>
+              <div class="panel-body"><div id="hubOperationLog" class="stack"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="assets/app_v2.js"></script>
+</body>
+</html>
