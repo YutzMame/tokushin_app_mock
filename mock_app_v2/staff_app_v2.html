@@ -17,8 +17,6 @@
     </div>
     <div class="top-actions">
       <select id="staffVenueSelect" aria-label="校舎選択"></select>
-      <select id="staffCourseSelect" aria-label="講座選択"></select>
-      <button class="ghost nav-toggle-button" id="staffToggleNav" type="button" aria-label="左メニューを閉じる" title="左メニューを閉じる">&lt;&lt;</button>
       <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
       <a class="button-link" href="index.html">入口</a>
     </div>
@@ -27,6 +25,7 @@
   <main class="wrap layout" id="staffLayout">
     <nav class="side-nav" id="staffSideNav" aria-label="校舎スタッフタブ">
       <button class="tab-button active" type="button" data-tab-target="staff-home">ホーム</button>
+      <button class="tab-button" type="button" data-tab-target="staff-realtime">リアルタイム</button>
       <div class="nav-item has-menu">
         <button class="tab-button" type="button" data-tab-target="staff-master">マスタ・設定</button>
         <div class="nav-menu" role="menu" aria-label="マスタ・設定メニュー">
@@ -42,110 +41,117 @@
     <div>
       <section class="tab-panel active" data-tab-panel="staff-home">
         <section class="panel">
-          <div class="panel-head">
-            <h2>ホーム</h2>
-          </div>
-          <div class="panel-body">
-            <div class="metric-grid" id="staffDashboardMetrics"></div>
-            <div class="form-grid" style="margin-top:14px">
-              <label>表示内容
-                <select id="staffHomePanelSelect">
-                  <option value="courses">講座一覧</option>
-                  <option value="course">選択中の講座</option>
-                  <option value="change">講座変更</option>
-                  <option value="proxy">代理入室</option>
-                  <option value="paper">紙回答入力</option>
-                  <option value="survey">アンケート（回答状況・傾向・コメント）</option>
-                  <option value="risk">異常・声かけ</option>
-                  <option value="export">CSV出力</option>
-                </select>
-              </label>
-              <label class="setting-toggle"><input id="homeToggleCourses" type="checkbox" checked>講座一覧を表示</label>
-              <label class="setting-toggle"><input id="homeToggleSelected" type="checkbox" checked>選択中の講座を表示</label>
-              <label class="setting-toggle"><input id="homeToggleAlerts" type="checkbox" checked>未対応事項を表示</label>
-            </div>
-          </div>
+          <div class="panel-head"><h2>未対応事項</h2></div>
+          <div class="panel-body"><div id="dashboardAlerts" class="stack"></div></div>
         </section>
 
-        <section class="panel" id="homeSelectedCoursePanel" style="margin-top:14px">
-          <div class="panel-head">
-            <h2>選択中の講座</h2>
-            <button class="small" id="clearStaffCourse" type="button">選択解除</button>
-          </div>
-          <div class="panel-body"><div id="homeSelectedCourse" class="stack"></div></div>
+        <section class="panel" style="margin-top:14px">
+          <div class="panel-head"><h2>本日の概況</h2></div>
+          <div class="panel-body"><div class="metric-grid" id="staffDashboardMetrics"></div></div>
         </section>
 
-        <section class="panel" id="homeWorkPanel" style="margin-top:14px">
-          <div class="panel-head"><h2 id="homeWorkTitle">表示内容</h2></div>
-          <div class="panel-body"><div id="staffHomePanel" class="stack"></div></div>
-        </section>
-
-        <section class="panel" id="homeCourseListPanel" style="margin-top:14px">
+        <section class="panel" style="margin-top:14px">
           <div class="panel-head"><h2>本日の講座</h2></div>
           <div class="panel-body"><div id="dashboardCourseList" class="grid-3"></div></div>
         </section>
+      </section>
 
-        <section class="panel" id="homeAlertsPanel" style="margin-top:14px">
-          <div class="panel-head"><h2>未対応事項</h2></div>
-          <div class="panel-body"><div id="dashboardAlerts" class="stack"></div></div>
+      <section class="tab-panel" data-tab-panel="staff-realtime">
+        <section class="panel">
+          <div class="panel-head"><h2>リアルタイム入室</h2></div>
+          <div class="panel-body">
+            <div class="metric-grid" id="realtimeMetrics"></div>
+            <div class="search-row" style="margin-top:12px">
+              <label>絞り込み<input id="realtimeSearch" placeholder="氏名・生徒番号・講座・学年・高校"></label>
+            </div>
+            <div class="notice" style="margin-top:10px">QR読込・代理・紙回答で入室した生徒を、講座・学年に関係なく新しい順に表示します。生徒提示QRの読取（タブレット）や生徒側登録もリアルタイムに反映します。</div>
+            <div id="realtimeList" class="stack" style="margin-top:12px"></div>
+          </div>
         </section>
       </section>
 
       <section class="tab-panel" data-tab-panel="staff-master">
         <section class="panel">
-          <div class="panel-head"><h2>マスタ・基準設定</h2></div>
+          <div class="panel-head"><h2>受講コマ達成基準</h2><button class="small" id="editThresholds" type="button">編集</button></div>
           <div class="panel-body">
-            <div class="notice">受講コマ達成基準は、基準未達と声かけ候補を判定するための学年別の最低受講コマ数です。科目別ではなく、期間内の受講済みコマ合計で判定します。</div>
-            <div class="actions">
-              <label class="setting-toggle"><input id="toggleMasterStudents" type="checkbox" checked>生徒マスタ</label>
-              <label class="setting-toggle"><input id="toggleMasterCourses" type="checkbox" checked>講座マスタ</label>
-              <label class="setting-toggle"><input id="toggleMasterSettings" type="checkbox" checked>校舎・基準設定</label>
+            <div class="notice">基準未達と声かけ候補を判定するための学年別の最低受講コマ数です。科目別ではなく、期間内の受講済みコマ合計で判定します。</div>
+            <div id="thresholdView" class="grid-3" style="margin-top:12px"></div>
+            <div id="thresholdEdit" class="is-hidden">
+              <div class="form-grid" style="margin-top:12px">
+                <label>学年<select id="thresholdGrade"></select></label>
+                <label>受講コマ達成基準<input id="thresholdValue" value="4" inputmode="numeric"></label>
+              </div>
+              <button class="primary" id="saveStaffSettings" type="button" style="margin-top:12px">設定を保存</button>
             </div>
-            <div class="form-grid" style="margin-top:12px">
-              <label>学年<select id="thresholdGrade"></select></label>
-              <label>受講コマ達成基準<input id="thresholdValue" value="4" inputmode="numeric"></label>
-            </div>
-            <button class="primary" id="saveStaffSettings" type="button" style="margin-top:12px">設定を保存</button>
           </div>
         </section>
-        <div class="grid-2" style="margin-top:14px">
-          <section class="panel" id="masterStudentsPanel">
-            <div class="panel-head"><h2>生徒マスタ</h2></div>
-            <div class="panel-body"><table><thead><tr><th>生徒</th><th>学年</th><th>校舎</th><th>担当</th><th>操作</th></tr></thead><tbody id="masterStudents"></tbody></table></div>
-          </section>
-          <section class="panel" id="masterCoursesPanel">
-            <div class="panel-head"><h2>講座マスタ</h2></div>
-            <div class="panel-body"><table><thead><tr><th>講座</th><th>識別</th><th>状態</th><th>講師</th><th>操作</th></tr></thead><tbody id="masterCourses"></tbody></table></div>
-          </section>
-        </div>
+
+        <section class="panel" id="masterStudentsPanel" style="margin-top:14px">
+          <div class="panel-head"><h2>生徒マスタ</h2><div class="actions"><button class="small" id="exportStudents" type="button">CSV出力</button><button class="small" id="editStudents" type="button">編集</button></div></div>
+          <div class="panel-body">
+            <div class="search-row"><label>フィルタ<input id="filterStudents" placeholder="氏名・学年・校舎・担当・生徒番号"></label></div>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>生徒</th><th>学年</th><th>校舎</th><th>担当</th><th>操作</th></tr></thead><tbody id="masterStudents"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="panel" id="masterCoursesPanel" style="margin-top:14px">
+          <div class="panel-head"><h2>講座マスタ</h2><div class="actions"><button class="small" id="exportCourses" type="button">CSV出力</button><button class="small" id="editCourses" type="button">編集</button></div></div>
+          <div class="panel-body">
+            <div class="search-row"><label>フィルタ<input id="filterCourses" placeholder="講座名・学年・科目・校舎・状態・日付・講師"></label></div>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>講座</th><th>識別</th><th>状態</th><th>講師</th><th>操作</th></tr></thead><tbody id="masterCourses"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="panel" id="masterStaffPanel" style="margin-top:14px">
+          <div class="panel-head"><h2>担当者マスタ</h2><div class="actions"><button class="small" id="exportStaff" type="button">CSV出力</button><button class="small" id="editStaff" type="button">編集</button></div></div>
+          <div class="panel-body">
+            <div class="search-row"><label>フィルタ<input id="filterStaff" placeholder="氏名・校舎・役割"></label></div>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>担当者ID</th><th>氏名</th><th>校舎</th><th>役割</th><th>操作</th></tr></thead><tbody id="masterStaff"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="panel" id="masterApplicationsPanel" style="margin-top:14px">
+          <div class="panel-head"><h2>申込情報マスタ</h2><div class="actions"><button class="small" id="exportApplications" type="button">CSV出力</button><button class="small" id="editApplications" type="button">編集</button></div></div>
+          <div class="panel-body">
+            <div class="search-row"><label>フィルタ<input id="filterApplications" placeholder="生徒・講座・状態・経路・申込日"></label></div>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>生徒</th><th>講座</th><th>申込日</th><th>状態</th><th>経路</th><th>操作</th></tr></thead><tbody id="masterApplications"></tbody></table></div>
+          </div>
+        </section>
+
         <section class="panel" id="masterSettingsPanel" style="margin-top:14px">
-          <div class="panel-head"><h2>校舎・教室・基準コマ設定</h2></div>
+          <div class="panel-head"><h2>校舎・教室</h2></div>
           <div class="panel-body"><div id="staffSettings" class="grid-3"></div></div>
         </section>
       </section>
 
       <section class="tab-panel" data-tab-panel="staff-risk">
-        <div class="grid-2">
-          <section class="panel">
+        <div class="segmented" id="riskViewTabs" style="margin-bottom:14px">
+          <button class="choice selected" type="button" data-risk-view="all">すべて</button>
+          <button class="choice" type="button" data-risk-view="anomaly">異常検知</button>
+          <button class="choice" type="button" data-risk-view="shortage">基準未達</button>
+          <button class="choice" type="button" data-risk-view="voice">声かけ</button>
+          <button class="choice" type="button" data-risk-view="log">操作履歴</button>
+        </div>
+        <div class="grid-2" id="riskPanels">
+          <section class="panel" id="riskAnomalyPanel">
             <div class="panel-head"><h2>異常検知</h2></div>
             <div class="panel-body"><table><thead><tr><th>種別</th><th>対象</th><th>重要度</th><th>操作</th></tr></thead><tbody id="anomalyRows"></tbody></table></div>
           </section>
-          <section class="panel">
+          <section class="panel" id="riskShortagePanel">
             <div class="panel-head"><h2>基準未達</h2></div>
             <div class="panel-body"><table><thead><tr><th>生徒</th><th>基準</th><th>差分</th><th>操作</th></tr></thead><tbody id="shortageRows"></tbody></table></div>
           </section>
-        </div>
-        <div class="grid-2" style="margin-top:14px">
-          <section class="panel">
+          <section class="panel" id="riskVoicePanel">
             <div class="panel-head"><h2>声かけ対象者</h2></div>
             <div class="panel-body">
               <label>生徒<select id="voiceStudent"></select></label>
+              <label style="margin-top:10px">担当者<select id="voiceAssignee"></select></label>
               <label style="margin-top:10px">理由<input id="voiceReason" value="基準未達と未回答が重複"></label>
               <button class="primary" id="voiceButton" type="button" style="width:100%; margin-top:10px">声かけ予定を追加</button>
               <div id="voiceRows" class="stack" style="margin-top:10px"></div>
             </div>
           </section>
-          <section class="panel">
+          <section class="panel" id="riskLogPanel">
             <div class="panel-head"><h2>操作履歴</h2></div>
             <div class="panel-body"><table><thead><tr><th>日時</th><th>操作</th><th>対象</th><th>理由</th></tr></thead><tbody id="operationLogRows"></tbody></table></div>
           </section>

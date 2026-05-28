@@ -359,6 +359,10 @@ pre {
   gap: 14px;
 }
 
+.grid-2.single {
+  grid-template-columns: 1fr;
+}
+
 .grid-3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -651,6 +655,63 @@ pre {
   line-height: 1.7;
 }
 
+.wide-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.1fr) minmax(0, 2fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.wide-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wide-main strong {
+  line-height: 1.3;
+}
+
+.wide-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table.dense {
+  table-layout: auto;
+  font-size: 11px;
+}
+
+table.dense th,
+table.dense td {
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .wide-row {
+    grid-template-columns: 1fr;
+  }
+
+  .wide-actions {
+    justify-content: flex-start;
+  }
+}
+
 .setting-toggle {
   display: inline-flex;
   align-items: center;
@@ -817,6 +878,21 @@ pre {
 
 .toast.show {
   display: block;
+}
+
+.tab-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .is-hidden {

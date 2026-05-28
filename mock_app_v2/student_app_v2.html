@@ -33,6 +33,7 @@
           <button class="tab-button active" type="button" data-tab-target="student-home">ホーム</button>
           <button class="tab-button" type="button" data-tab-target="student-attendance">出席</button>
           <button class="tab-button" type="button" data-tab-target="student-survey">アンケート</button>
+          <button class="tab-button" type="button" data-tab-target="student-notices">お知らせ<span class="tab-badge is-hidden" id="studentNoticeBadge">0</span></button>
           <button class="tab-button" type="button" data-tab-target="student-calendar">カレンダー</button>
           <button class="tab-button" type="button" data-tab-target="student-log">学習ログ</button>
           <button class="tab-button" type="button" data-tab-target="student-settings">設定</button>
@@ -52,8 +53,13 @@
               <h2 class="section-title" style="margin:0 0 10px">講座一覧</h2>
               <div id="studentCourseList" class="stack"></div>
             </div>
-            <h2 class="section-title" style="margin:16px 0 10px">お知らせ</h2>
-            <div id="studentNotices" class="stack"></div>
+          </section>
+
+          <section class="tab-panel" data-tab-panel="student-notices">
+            <div class="panel">
+              <div class="panel-head"><h2>お知らせ</h2></div>
+              <div class="panel-body"><div id="studentNotices" class="stack"></div></div>
+            </div>
           </section>
 
           <section class="tab-panel" data-tab-panel="student-attendance">

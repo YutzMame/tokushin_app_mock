@@ -12,54 +12,47 @@
       <div class="brand-mark">QR</div>
       <div>
         <h1>校舎QR読取タブレット</h1>
-        <p>生徒提示QRを読み取り、入室をリアルタイム表示</p>
+        <p>管理者ログイン＋QR読取専用</p>
       </div>
     </div>
     <div class="top-actions">
-      <select id="tabletVenueSelect" aria-label="校舎選択"></select>
       <button class="ghost" type="button" data-reset-state>初期データに戻す</button>
       <a class="button-link" href="index.html">入口</a>
     </div>
   </header>
 
-  <main class="wrap">
-    <section class="panel">
-      <div class="panel-head"><h2>生徒QR読取</h2></div>
+  <main class="wrap" style="max-width:720px">
+    <section class="panel" id="tabletLogin">
+      <div class="panel-head"><h2>管理者ログイン</h2></div>
       <div class="panel-body">
-        <div class="notice">生徒側アプリの「QRを提示する」を、この校舎タブレットで読み取る方式です。生徒が教室QRを読む方式と併用できます（運用方式は未確定のため両方を実装）。</div>
-        <div class="grid-2" style="margin-top:12px">
-          <div>
-            <div class="search-row">
-              <label>生徒検索<input id="tabletSearch" placeholder="氏名・生徒番号・学年・高校"></label>
-            </div>
-            <label style="margin-top:10px">生徒<select id="tabletStudent"></select></label>
-            <label style="margin-top:10px">対象講座<select id="tabletCourse"></select></label>
-            <button class="primary" id="tabletScanButton" type="button" style="width:100%; margin-top:12px">読み取って入室登録</button>
-          </div>
-          <div>
-            <div class="qr-box"><div class="qr-mark" aria-hidden="true"></div></div>
-            <div id="tabletReadResult" style="margin-top:10px"></div>
-          </div>
+        <div class="notice">校舎据置のタブレットです。管理者がログインしてからQR読取を行います。（デモ: ID <strong>admin</strong> / パスワード <strong>admin1234</strong>）</div>
+        <div class="form-grid" style="grid-template-columns:1fr; margin-top:12px">
+          <label>管理者ID<input id="tabletAdminId" value="admin"></label>
+          <label>パスワード<input id="tabletAdminPw" type="password" value="admin1234"></label>
         </div>
+        <button class="primary" id="tabletLoginButton" type="button" style="width:100%; margin-top:12px">ログイン</button>
+        <div id="tabletLoginError" class="notice red is-hidden" style="margin-top:10px"></div>
       </div>
     </section>
 
-    <section class="panel" style="margin-top:14px">
-      <div class="panel-head"><h2>リアルタイム入室状況（顔・氏名照合用）</h2></div>
+    <section class="panel is-hidden" id="tabletScanner">
+      <div class="panel-head">
+        <h2>QR読取</h2>
+        <button class="small" id="tabletLogout" type="button">ログアウト</button>
+      </div>
       <div class="panel-body">
-        <div class="metric-grid" id="tabletMetrics"></div>
-        <div class="notice" style="margin-top:12px">入室登録した生徒を、学年・講座に関係なく新しい順に表示します。氏名・高校・学年・受講コマ数・過去出席歴・各種フラグで、生徒の顔と名前を一致させます。生徒側・他端末の登録もリアルタイムに反映します。</div>
-        <div id="tabletRoster" class="roster-grid" style="margin-top:12px"></div>
+        <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <label>校舎<select id="tabletVenueSelect"></select></label>
+          <label>読取対象の講座<select id="tabletCourseSelect"></select></label>
+        </div>
+        <div class="qr-box" style="margin-top:12px; min-height:230px"><div class="qr-mark" aria-hidden="true"></div></div>
+        <label style="margin-top:12px">読取（生徒の提示QRをスキャン）<select id="tabletScanStudent"></select></label>
+        <button class="primary" id="tabletScanButton" type="button" style="width:100%; margin-top:12px">QRを読み取って入室登録</button>
+        <div id="tabletReadResult" style="margin-top:12px"></div>
       </div>
     </section>
   </main>
 
-  <div class="modal-backdrop" id="detailModal">
-    <div class="modal">
-      <div class="modal-head"><h2 id="modalTitle">講座詳細</h2><button type="button" data-close-modal>閉じる</button></div>
-      <div class="modal-body" id="modalBody"></div>
-    </div>
-  </div>
   <div class="toast" id="toast"></div>
   <script src="assets/app_v2.js"></script>
 </body>

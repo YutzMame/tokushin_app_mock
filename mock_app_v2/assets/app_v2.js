@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "tokushin_v2_state";
-  const STATE_SCHEMA = 3;
+  const STATE_SCHEMA = 4;
   const APP_DATE = "2026-05-28";
   const CSV_FILES = {
     students: "students_v2.csv",
@@ -14,6 +14,8 @@
     thresholds: "thresholds_v2.csv",
     actions: "staff_actions_v2.csv",
     teacherNotes: "teacher_notes_v2.csv",
+    staffMaster: "staff_master_v2.csv",
+    applications: "applications_v2.csv",
   };
 
   let state = null;
@@ -332,6 +334,7 @@
       before_value: action.before_value || "",
       after_value: action.after_value || "",
       reason: action.reason || "",
+      assignee: action.assignee || "",
       created_at: action.created_at || nowStamp(),
     });
   }
@@ -359,17 +362,11 @@
     state.ui.attendanceMode ||= "read";
     state.ui.studentCourseView ||= "today";
     state.ui.studentCalendarDate ||= APP_DATE;
-    state.ui.staffShowStudents = state.ui.staffShowStudents !== false;
-    state.ui.staffShowCourses = state.ui.staffShowCourses !== false;
-    state.ui.staffShowSettings = state.ui.staffShowSettings !== false;
-    state.ui.staffHomePanel ||= "courses";
-    state.ui.staffHomeShowCourses = state.ui.staffHomeShowCourses !== false;
-    state.ui.staffHomeShowSelected = state.ui.staffHomeShowSelected !== false;
-    state.ui.staffHomeShowAlerts = state.ui.staffHomeShowAlerts !== false;
-    state.ui.staffNavVisible = state.ui.staffNavVisible !== false;
-    state.ui.proxySearch ||= "";
+    state.ui.realtimeSearch ||= "";
+    state.ui.masterEdit ||= { students: false, courses: false, staff: false, applications: false, thresholds: false };
+    state.ui.masterFilter ||= { students: "", courses: "", staff: "", applications: "" };
+    state.ui.riskView ||= "all";
     state.ui.readNotices ||= [];
-    state.ui.tabletSearch ||= "";
     state.selected.tabletVenue ||= "御茶ノ水";
     const firstTabletCourse = sortCourses(
       state.courses.filter((course) => course.venue === state.selected.tabletVenue && course.date === APP_DATE)
@@ -476,12 +473,6 @@
         closeModalWindow();
       }
     });
-    document.addEventListener("input", (event) => {
-      if (event.target?.id === "proxySearch") {
-        state.ui.proxySearch = event.target.value;
-        saveState();
-      }
-    });
   }
 
   function openModal(title, bodyHtml) {
@@ -496,6 +487,8 @@
 
   function closeModalWindow() {
     qs("#detailModal")?.classList.remove("open");
+    attendanceModalCourse = null;
+    surveyModalCourse = null;
   }
 
   function openCourseModal(courseId) {
@@ -817,6 +810,10 @@
       });
     });
 
+    qs('[data-tab-target="student-notices"]')?.addEventListener("click", () => {
+      markStudentNoticesRead();
+    });
+
     qs("#studentTogglePastSurvey")?.addEventListener("click", () => {
       state.ui.studentShowHistory = !state.ui.studentShowHistory;
       saveState();
@@ -874,6 +871,7 @@
     const passwordInput = qs("#studentPassword");
     if (passwordInput) passwordInput.value = student.password || "abcdefgh";
     renderStudentHome();
+    renderStudentNotices();
     renderStudentAttendance();
     renderStudentSurvey();
     renderStudentCalendar();
@@ -892,22 +890,47 @@
       ? today.map((course) => studentCourseCard(course, state.selected.studentId)).join("")
       : '<div class="notice">本日の登録講座はありません。</div>';
     qs("#studentCourseList").innerHTML = courses.map((course) => studentCourseCard(course, state.selected.studentId)).join("");
+  }
 
-    const notices = state.changes
+  function studentNotices() {
+    const courses = studentCourses(state.selected.studentId);
+    return state.changes
       .filter((change) => change.visible_to_student === "yes")
       .filter((change) => courses.some((course) => course.course_id === change.course_id));
-    qs("#studentNotices").innerHTML = notices.length
-      ? notices
-          .map((change) => {
-            const course = courseById(change.course_id);
-            return itemHtml(
-              esc(change.change_type),
-              `${esc(courseShort(course))}<br>${esc(change.before_value)} → ${esc(change.after_value)} / ${esc(change.reason)}`,
-              `<span class="chip amber">${esc(change.confirmed_status)}</span>`
-            );
-          })
-          .join("")
-      : '<div class="notice">表示対象のお知らせはありません。</div>';
+  }
+
+  function renderStudentNotices() {
+    const notices = studentNotices();
+    const read = new Set(state.ui.readNotices || []);
+    const unread = notices.filter((change) => !read.has(change.change_id)).length;
+    const badge = qs("#studentNoticeBadge");
+    if (badge) {
+      badge.textContent = String(unread);
+      badge.classList.toggle("is-hidden", unread === 0);
+    }
+    const list = qs("#studentNotices");
+    if (list) {
+      list.innerHTML = notices.length
+        ? notices
+            .map((change) => {
+              const course = courseById(change.course_id);
+              const read2 = read.has(change.change_id);
+              return itemHtml(
+                esc(change.change_type),
+                `${esc(courseShort(course))}<br>${esc(change.before_value)} → ${esc(change.after_value)} / ${esc(change.reason)} / ${esc(change.created_at)}`,
+                `<span class="chip ${read2 ? "" : "amber"}">${read2 ? "既読" : "未読"}</span>`
+              );
+            })
+            .join("")
+        : '<div class="notice">表示対象のお知らせはありません。</div>';
+    }
+  }
+
+  function markStudentNoticesRead() {
+    const ids = studentNotices().map((change) => change.change_id);
+    state.ui.readNotices = [...new Set([...(state.ui.readNotices || []), ...ids])];
+    saveState();
+    renderStudentNotices();
   }
 
   function renderStudentAttendance() {
@@ -1061,35 +1084,14 @@
   function bindStaffOnce() {
     qs("#staffVenueSelect")?.addEventListener("change", (event) => {
       state.selected.staffVenue = event.target.value;
-      const nextCourse = sortCourses(state.courses.filter((course) => course.venue === event.target.value && course.date === APP_DATE))[0];
-      state.selected.staffCourseId = nextCourse?.course_id || "";
-      state.ui.staffHomePanel = "courses";
       saveState();
       renderStaff();
     });
-    qs("#staffCourseSelect")?.addEventListener("change", (event) => {
-      state.selected.staffCourseId = event.target.value;
+    qs("#realtimeSearch")?.addEventListener("input", (event) => {
+      state.ui.realtimeSearch = event.target.value;
       saveState();
-      renderStaff();
+      renderStaffRealtime();
     });
-    qs("#clearStaffCourse")?.addEventListener("click", () => {
-      state.selected.staffCourseId = "";
-      state.ui.staffHomePanel = "courses";
-      saveState();
-      renderStaff();
-    });
-    qs("#staffToggleNav")?.addEventListener("click", () => {
-      state.ui.staffNavVisible = !state.ui.staffNavVisible;
-      saveState();
-      renderStaffNav();
-    });
-    qs("#staffHomePanelSelect")?.addEventListener("change", (event) => {
-      state.ui.staffHomePanel = event.target.value;
-      saveState();
-      renderStaffDashboard();
-    });
-    qs("#proxyButton")?.addEventListener("click", staffProxyCheckin);
-    qs("#paperButton")?.addEventListener("click", staffPaperSurvey);
     qs("#voiceButton")?.addEventListener("click", staffAddVoiceAction);
     qs("#saveStaffSettings")?.addEventListener("click", saveStaffSettings);
     qs("#previewExport")?.addEventListener("click", renderExportPreview);
@@ -1100,26 +1102,37 @@
       renderStaffMaster();
     });
     [
-      ["#homeToggleCourses", "staffHomeShowCourses"],
-      ["#homeToggleSelected", "staffHomeShowSelected"],
-      ["#homeToggleAlerts", "staffHomeShowAlerts"],
+      ["#editThresholds", "thresholds"],
+      ["#editStudents", "students"],
+      ["#editCourses", "courses"],
+      ["#editStaff", "staff"],
+      ["#editApplications", "applications"],
     ].forEach(([selector, key]) => {
-      qs(selector)?.addEventListener("change", (event) => {
-        state.ui[key] = event.target.checked;
-        saveState();
-        renderStaffDashboard();
-      });
-    });
-    [
-      ["#toggleMasterStudents", "staffShowStudents"],
-      ["#toggleMasterCourses", "staffShowCourses"],
-      ["#toggleMasterSettings", "staffShowSettings"],
-    ].forEach(([selector, key]) => {
-      qs(selector)?.addEventListener("change", (event) => {
-        state.ui[key] = event.target.checked;
+      qs(selector)?.addEventListener("click", () => {
+        state.ui.masterEdit[key] = !state.ui.masterEdit[key];
         saveState();
         renderStaffMaster();
       });
+    });
+    [
+      ["#filterStudents", "students"],
+      ["#filterCourses", "courses"],
+      ["#filterStaff", "staff"],
+      ["#filterApplications", "applications"],
+    ].forEach(([selector, key]) => {
+      qs(selector)?.addEventListener("input", (event) => {
+        state.ui.masterFilter[key] = event.target.value;
+        saveState();
+        renderStaffMaster();
+      });
+    });
+    [
+      ["#exportStudents", "students"],
+      ["#exportCourses", "courses"],
+      ["#exportStaff", "staff"],
+      ["#exportApplications", "applications"],
+    ].forEach(([selector, key]) => {
+      qs(selector)?.addEventListener("click", () => exportMasterCsv(key));
     });
 
     document.addEventListener("click", (event) => {
@@ -1157,6 +1170,33 @@
         saveCourseMasterFromModal();
         return;
       }
+      const editStaffButton = event.target.closest("[data-edit-staff]");
+      if (editStaffButton) {
+        openStaffMasterModal(editStaffButton.dataset.editStaff);
+        return;
+      }
+      const saveStaffButton = event.target.closest("#modalSaveStaff");
+      if (saveStaffButton) {
+        saveStaffMasterFromModal();
+        return;
+      }
+      const editApplicationButton = event.target.closest("[data-edit-application]");
+      if (editApplicationButton) {
+        openApplicationModal(editApplicationButton.dataset.editApplication);
+        return;
+      }
+      const saveApplicationButton = event.target.closest("#modalSaveApplication");
+      if (saveApplicationButton) {
+        saveApplicationFromModal();
+        return;
+      }
+      const riskViewButton = event.target.closest("[data-risk-view]");
+      if (riskViewButton) {
+        state.ui.riskView = riskViewButton.dataset.riskView;
+        saveState();
+        renderStaffRisk();
+        return;
+      }
       const saveCourseChangeButton = event.target.closest("#modalSaveCourseChange");
       if (saveCourseChangeButton) {
         saveCourseChange();
@@ -1168,38 +1208,31 @@
         updateAttendanceStatus(studentId, courseId, status);
         return;
       }
-      const selectCourseButton = event.target.closest("[data-staff-select-course]");
-      if (selectCourseButton) {
-        state.selected.staffCourseId = selectCourseButton.dataset.staffSelectCourse;
-        state.ui.staffHomePanel = selectCourseButton.dataset.staffPanel || "course";
-        saveState();
-        selectTab("staff-home");
-        renderStaff();
+      const attendanceTableButton = event.target.closest("[data-attendance-table]");
+      if (attendanceTableButton) {
+        openAttendanceTableModal(attendanceTableButton.dataset.attendanceTable);
         return;
       }
-      const clearCourseButton = event.target.closest("[data-staff-clear-course]");
-      if (clearCourseButton) {
-        state.selected.staffCourseId = "";
-        state.ui.staffHomePanel = "courses";
-        saveState();
-        renderStaff();
+      const courseSurveyButton = event.target.closest("[data-course-survey]");
+      if (courseSurveyButton) {
+        openSurveyModal(courseSurveyButton.dataset.courseSurvey);
         return;
       }
-      const homePanelButton = event.target.closest("[data-staff-home-panel]");
-      if (homePanelButton) {
-        state.ui.staffHomePanel = homePanelButton.dataset.staffHomePanel;
-        saveState();
-        renderStaffDashboard();
+      const proxyCheckinButton = event.target.closest("[data-proxy-checkin]");
+      if (proxyCheckinButton) {
+        const [studentId, courseId] = proxyCheckinButton.dataset.proxyCheckin.split("|");
+        proxyCheckin(studentId, courseId, "スマホ忘れ本人確認済");
         return;
       }
-      const dynamicProxyButton = event.target.closest("#proxyButton");
-      if (dynamicProxyButton) {
-        staffProxyCheckin();
+      const paperOpenButton = event.target.closest("[data-paper-open]");
+      if (paperOpenButton) {
+        const [studentId, courseId] = paperOpenButton.dataset.paperOpen.split("|");
+        openPaperModal(studentId, courseId);
         return;
       }
-      const dynamicPaperButton = event.target.closest("#paperButton");
-      if (dynamicPaperButton) {
-        staffPaperSurvey();
+      const savePaperButton = event.target.closest("#modalSavePaper");
+      if (savePaperButton) {
+        savePaperFromModal();
         return;
       }
       const anomalyButton = event.target.closest("[data-anomaly-confirm]");
@@ -1231,6 +1264,7 @@
         });
         saveState();
         renderStaff();
+        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
         showToast("声かけ対象に追加しました。");
         return;
       }
@@ -1280,33 +1314,32 @@
   }
 
   function renderStaff() {
-    renderStaffNav();
     renderStaffSelectors();
     renderStaffDashboard();
+    renderStaffRealtime();
     renderStaffMaster();
     renderStaffRisk();
     renderStaffExport();
   }
 
-  function focusMasterView(view) {
-    state.ui.staffShowStudents = view === "students";
-    state.ui.staffShowCourses = view === "courses";
-    state.ui.staffShowSettings = view === "settings";
-    saveState();
-    selectTab("staff-master");
-    renderStaffMaster();
+  function venueTodayCourses() {
+    return sortCourses(state.courses.filter((course) => course.venue === state.selected.staffVenue && course.date === APP_DATE));
   }
 
-  function renderStaffNav() {
-    const layout = qs("#staffLayout");
-    const button = qs("#staffToggleNav");
-    if (layout) layout.classList.toggle("nav-hidden", !state.ui.staffNavVisible);
-    if (button) {
-      button.textContent = state.ui.staffNavVisible ? "<<" : ">>";
-      button.title = state.ui.staffNavVisible ? "左メニューを閉じる" : "左メニューを開く";
-      button.setAttribute("aria-label", button.title);
-    }
+  function courseAttendanceRows(courseId) {
+    return courseStudentIds(courseId, true).map((studentId) => ({
+      student: studentById(studentId),
+      attendance: attendanceFor(studentId, courseId, true),
+      survey: surveyFor(studentId, courseId),
+    }));
   }
+
+  function focusMasterView(view) {
+    selectTab("staff-master");
+    const target = view === "students" ? "#masterStudentsPanel" : view === "courses" ? "#masterCoursesPanel" : "#masterSettingsPanel";
+    qs(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
 
   function renderStaffSelectors() {
     const venues = [...new Set(state.courses.map((course) => course.venue))];
@@ -1315,220 +1348,187 @@
       venueSelect.innerHTML = venues.map((venue) => `<option>${esc(venue)}</option>`).join("");
       venueSelect.value = state.selected.staffVenue;
     }
-    const courseSelect = qs("#staffCourseSelect");
-    if (courseSelect) {
-      const courses = sortCourses(state.courses.filter((course) => course.venue === state.selected.staffVenue));
-      courseSelect.innerHTML = `<option value="">講座未選択</option>` + courses.map((course) => `<option value="${esc(course.course_id)}">${esc(courseShort(course))} ${esc(course.start_time)}</option>`).join("");
-      if (state.selected.staffCourseId && !courses.some((course) => course.course_id === state.selected.staffCourseId)) state.selected.staffCourseId = "";
-      courseSelect.value = state.selected.staffCourseId;
-    }
   }
 
-  function currentStaffCourse() {
-    return courseById(state.selected.staffCourseId) || null;
-  }
-
-  function selectedCourseAttendanceRows() {
-    const course = currentStaffCourse();
-    if (!course) return [];
-    return courseStudentIds(course.course_id, true).map((studentId) => ({
-      student: studentById(studentId),
-      attendance: attendanceFor(studentId, course.course_id, true),
-      survey: surveyFor(studentId, course.course_id),
-    }));
-  }
 
   function renderStaffDashboard() {
-    const venueCourses = state.courses.filter((course) => course.venue === state.selected.staffVenue && course.date === APP_DATE);
-    const rows = selectedCourseAttendanceRows();
+    const courses = venueTodayCourses();
+    const courseIds = courses.map((course) => course.course_id);
+    const targetIds = new Set();
+    activeEnrollments().forEach((enrollment) => {
+      if (courseIds.includes(enrollment.course_id)) targetIds.add(enrollment.student_id);
+    });
+    const checkedIds = new Set();
+    let submitted = 0;
+    courses.forEach((course) =>
+      courseAttendanceRows(course.course_id).forEach((row) => {
+        if (row.attendance.checkin_status === "入室済") checkedIds.add(row.attendance.student_id);
+        if (row.survey?.status === "提出済") submitted += 1;
+      })
+    );
     const anomalies = detectAnomalies().filter((item) => !isAnomalyConfirmed(item.key));
-    const selectedCourse = currentStaffCourse();
-    const homePanelSelect = qs("#staffHomePanelSelect");
-    if (homePanelSelect) homePanelSelect.value = state.ui.staffHomePanel;
-    const homeToggleCourses = qs("#homeToggleCourses");
-    const homeToggleSelected = qs("#homeToggleSelected");
-    const homeToggleAlerts = qs("#homeToggleAlerts");
-    if (homeToggleCourses) homeToggleCourses.checked = state.ui.staffHomeShowCourses;
-    if (homeToggleSelected) homeToggleSelected.checked = state.ui.staffHomeShowSelected;
-    if (homeToggleAlerts) homeToggleAlerts.checked = state.ui.staffHomeShowAlerts;
-    qs("#homeCourseListPanel")?.classList.toggle("is-hidden", !state.ui.staffHomeShowCourses);
-    qs("#homeSelectedCoursePanel")?.classList.toggle("is-hidden", !state.ui.staffHomeShowSelected);
-    qs("#homeAlertsPanel")?.classList.toggle("is-hidden", !state.ui.staffHomeShowAlerts);
     qs("#staffDashboardMetrics").innerHTML = [
-      metric("本日の講座", venueCourses.length),
-      metric("対象者", rows.length),
-      metric("入室済", rows.filter((row) => row.attendance.checkin_status === "入室済").length),
-      metric("回答済", rows.filter((row) => row.survey?.status === "提出済").length),
+      metric("本日の講座", courses.length),
+      metric("対象者", targetIds.size),
+      metric("入室済", checkedIds.size),
+      metric("回答済", submitted),
       metric("未確認異常", anomalies.length),
     ].join("");
-    const selectedBox = qs("#homeSelectedCourse");
-    if (selectedBox) {
-      selectedBox.innerHTML = renderStaffCourseSummary(selectedCourse);
-    }
-    qs("#dashboardCourseList").innerHTML = venueCourses
-      .map((course) =>
-        renderCourseCard(course, {
-          selected: course.course_id === state.selected.staffCourseId,
-          actions: `
-            <button class="small primary" type="button" data-staff-select-course="${esc(course.course_id)}" data-staff-panel="course">管理</button>
-            <button class="small" type="button" data-open-course-change="${esc(course.course_id)}">変更</button>
-            <button class="small" type="button" data-staff-select-course="${esc(course.course_id)}" data-staff-panel="proxy">代理</button>
-            <button class="small" type="button" data-staff-select-course="${esc(course.course_id)}" data-staff-panel="paper">紙回答</button>
-            <button class="small" type="button" data-staff-select-course="${esc(course.course_id)}" data-staff-panel="survey">アンケート</button>
-            ${materialsButton(course)}
-          `,
-        })
-      )
-      .join("");
-    qs("#dashboardAlerts").innerHTML = [
-      ...anomalies.slice(0, 4).map((item) => itemHtml(esc(item.type), esc(item.detail), '<span class="chip red">未確認</span>')),
-      ...state.changes
-        .filter((change) => change.confirmed_status !== "確認済")
-        .map((change) => itemHtml(esc(change.change_type), `${esc(change.course_id)} / ${esc(change.reason)}`, '<span class="chip amber">未確認</span>')),
-    ].join("") || '<div class="notice green">未対応事項はありません。</div>';
-    renderStaffHomePanel();
+    qs("#dashboardAlerts").innerHTML =
+      [
+        ...anomalies.slice(0, 6).map((item) => itemHtml(esc(item.type), esc(item.detail), '<span class="chip red">未確認</span>')),
+        ...state.changes
+          .filter((change) => change.confirmed_status !== "確認済")
+          .map((change) => itemHtml(esc(change.change_type), `${esc(courseShort(courseById(change.course_id)))} / ${esc(change.reason)}`, '<span class="chip amber">未確認</span>')),
+      ].join("") || '<div class="notice green">未対応事項はありません。</div>';
+    qs("#dashboardCourseList").innerHTML = courses.length
+      ? courses
+          .map((course) => {
+            const rows = courseAttendanceRows(course.course_id);
+            const checked = rows.filter((row) => row.attendance.checkin_status === "入室済").length;
+            const missing = rows.filter((row) => row.attendance.checkin_status === "未入室").length;
+            const answered = rows.filter((row) => row.survey?.status === "提出済").length;
+            return renderCourseCard(course, {
+              extra: `<div class="status-row"><span class="chip green">入室 ${checked}/${rows.length}</span><span class="chip amber">未入室 ${missing}</span><span class="chip blue">回答 ${answered}/${rows.length}</span></div>`,
+              actions: `
+                <button class="small primary" type="button" data-attendance-table="${esc(course.course_id)}">出席状況</button>
+                <button class="small" type="button" data-course-survey="${esc(course.course_id)}">アンケート</button>
+                <button class="small" type="button" data-open-course-change="${esc(course.course_id)}">講座変更</button>
+                ${materialsButton(course)}
+              `,
+            });
+          })
+          .join("")
+      : '<div class="notice">本日この校舎の講座はありません。</div>';
   }
 
-  function renderStaffCourseSummary(course) {
-    if (!course) return '<div class="notice amber">講座は未選択です。上部の講座プルダウン、または本日の講座一覧から講座を選択してください。</div>';
-    const rows = selectedCourseAttendanceRows();
-    const submitted = rows.filter((row) => row.survey?.status === "提出済").length;
-    const checked = rows.filter((row) => row.attendance.checkin_status === "入室済").length;
-    const missing = rows.filter((row) => row.attendance.checkin_status === "未入室").length;
-    return `
-      ${renderCourseCard(course, {
-        extra: `<div class="status-row"><span class="chip green">入室 ${checked}/${rows.length}</span><span class="chip amber">未入室 ${missing}</span><span class="chip blue">回答 ${submitted}/${rows.length}</span></div>`,
-        actions: `
-          <button class="small" type="button" data-open-course-change="${esc(course.course_id)}">講座変更</button>
-          <button class="small" type="button" data-staff-home-panel="proxy">代理入室</button>
-          <button class="small" type="button" data-staff-home-panel="paper">紙回答</button>
-          <button class="small" type="button" data-staff-home-panel="survey">アンケート</button>
-          <button class="small" type="button" data-staff-home-panel="risk">異常・声かけ</button>
-          ${materialsButton(course)}
-          <button class="small" type="button" data-staff-clear-course>選択解除</button>
-        `,
-        selected: true,
-      })}
-    `;
-  }
-
-  function renderStaffHomePanel() {
-    const panel = qs("#staffHomePanel");
-    if (!panel) return;
-    const title = qs("#homeWorkTitle");
-    const kind = state.ui.staffHomePanel || "courses";
-    const titleMap = {
-      courses: "講座一覧",
-      course: "選択中の講座",
-      change: "講座変更",
-      proxy: "代理入室",
-      paper: "紙回答入力",
-      survey: "アンケート回答状況・傾向・コメント",
-      risk: "異常・声かけ",
-      export: "CSV出力",
-    };
-    if (title) title.textContent = titleMap[kind] || "表示内容";
-    if (kind === "courses") {
-      panel.innerHTML = '<div class="notice">下の講座一覧、または上部の講座プルダウンから対象講座を選択してください。</div>';
-      return;
-    }
-    if (kind === "course") {
-      panel.innerHTML = renderStaffCourseSummary(currentStaffCourse());
-      return;
-    }
-    if (kind === "change") {
-      panel.innerHTML = renderHomeChangePanel();
-      return;
-    }
-    if (kind === "proxy") {
-      panel.innerHTML = renderHomeProxyPanel();
-      return;
-    }
-    if (kind === "paper") {
-      panel.innerHTML = renderHomePaperPanel();
-      return;
-    }
-    if (kind === "survey") {
-      panel.innerHTML = renderHomeSurveyPanel();
-      return;
-    }
-    if (kind === "risk") {
-      panel.innerHTML = renderHomeRiskPanel();
-      return;
-    }
-    if (kind === "export") {
-      panel.innerHTML = '<div class="notice">データ入出力タブでCSVをプレビュー・ダウンロードできます。</div><button class="primary" type="button" data-tab-target="staff-export">データ入出力へ</button>';
-    }
-  }
-
-  function renderHomeChangePanel() {
-    const course = currentStaffCourse();
-    if (!course) return '<div class="notice amber">講座を選択すると、休講・日程変更・時間変更・教室変更・講師変更を登録できます。</div>';
-    const history = state.changes
-      .filter((change) => change.course_id === course.course_id)
-      .map((change) => itemHtml(esc(change.change_type), `${esc(change.before_value)} → ${esc(change.after_value)} / ${esc(change.reason)}`, `<span class="chip ${statusColor(change.confirmed_status)}">${esc(change.confirmed_status)}</span>`))
-      .join("") || '<div class="notice">この講座の変更履歴はありません。</div>';
-    return `
-      ${itemHtml(esc(courseShort(course)), esc(courseMeta(course)), courseStatusChip(course))}
-      <div class="notice amber">講座変更はモーダルで変更前/変更後と生徒通知範囲を確認してから確定します。</div>
-      <button class="primary" type="button" data-open-course-change="${esc(course.course_id)}">講座変更を登録</button>
-      <div class="stack" style="margin-top:12px">${history}</div>
-    `;
-  }
-
-  function renderHomeProxyPanel() {
-    const course = currentStaffCourse();
-    if (!course) return '<div class="notice amber">講座を選択すると、対象生徒を検索して代理入室を登録できます。</div>';
-    const rows = selectedCourseAttendanceRows();
-    const query = (state.ui.proxySearch || "").trim().toLowerCase();
-    const filtered = rows.filter(({ student, attendance }) => {
-      if (!query) return true;
-      return `${student?.display_name || ""} ${student?.student_number || ""} ${student?.grade || ""} ${attendance.student_id}`.toLowerCase().includes(query);
+  function renderStaffRealtime() {
+    const venue = state.selected.staffVenue;
+    const courses = sortCourses(state.courses.filter((course) => course.venue === venue && course.date === APP_DATE));
+    const seen = new Set();
+    const rows = [];
+    courses.forEach((course) => {
+      courseStudentIds(course.course_id, true).forEach((studentId) => {
+        const key = `${studentId}:${course.course_id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        rows.push({ student: studentById(studentId), course, attendance: attendanceFor(studentId, course.course_id, true), survey: surveyFor(studentId, course.course_id) });
+      });
     });
-    const options = filtered
-      .map(({ student, attendance }) => `<option value="${esc(attendance.student_id)}">${esc(student?.display_name || attendance.student_id)} / ${esc(studentNumber(student))}</option>`)
-      .join("");
-    const proxies = state.attendance
-      .filter((record) => record.course_id === course.course_id && record.method === "代理")
-      .map((record) => itemHtml(esc(studentName(record.student_id)), `${esc(record.checkin_time || "-")} / ${esc(record.exception_note || record.corrected_reason)}`, '<span class="chip amber">代理</span>'))
-      .join("") || '<div class="notice">代理対応はありません。</div>';
-    return `
-      <div class="search-row">
-        <label>生徒検索<input id="proxySearch" value="${esc(state.ui.proxySearch || "")}" placeholder="名前・生徒番号・学年"></label>
-        <button type="button" data-staff-home-panel="proxy">検索</button>
-      </div>
-      <label style="margin-top:10px">生徒<select id="proxyStudent">${options}</select></label>
-      <label style="margin-top:10px">理由<input id="proxyReason" value="スマホ忘れ本人確認済"></label>
-      <button class="primary" id="proxyButton" type="button" style="width:100%; margin-top:10px">代理入室</button>
-      <div class="stack" style="margin-top:12px">${proxies}</div>
-    `;
+    rows.sort((a, b) => {
+      const aIn = a.attendance.checkin_status === "入室済" ? 1 : 0;
+      const bIn = b.attendance.checkin_status === "入室済" ? 1 : 0;
+      if (aIn !== bIn) return bIn - aIn;
+      return String(b.attendance.checkin_time).localeCompare(String(a.attendance.checkin_time));
+    });
+    const checkedCount = rows.filter((row) => row.attendance.checkin_status === "入室済").length;
+    const metrics = qs("#realtimeMetrics");
+    if (metrics) {
+      metrics.innerHTML = [
+        metric("本日の講座", courses.length),
+        metric("対象(のべ)", rows.length),
+        metric("入室済", checkedCount),
+        metric("未入室", rows.length - checkedCount),
+      ].join("");
+    }
+    const query = (state.ui.realtimeSearch || "").trim().toLowerCase();
+    const search = qs("#realtimeSearch");
+    if (search && document.activeElement !== search) search.value = state.ui.realtimeSearch || "";
+    const filtered = rows.filter(
+      (row) => !query || `${row.student?.display_name || ""} ${studentNumber(row.student)} ${row.student?.grade || ""} ${row.student?.school || ""} ${courseShort(row.course)}`.toLowerCase().includes(query)
+    );
+    const list = qs("#realtimeList");
+    if (!list) return;
+    list.innerHTML = filtered.length
+      ? filtered
+          .map((row) => {
+            const sid = row.attendance.student_id;
+            const inRoom = row.attendance.checkin_status === "入室済";
+            const summary = studentPeriodSummary(sid);
+            const past = pastAttendanceSummary(sid);
+            const surveyDone = row.survey?.status === "提出済";
+            const flags = studentRosterFlags(sid, row.attendance, row.course)
+              .map((flag) => `<span class="chip ${flag.color}">${esc(flag.label)}</span>`)
+              .join("");
+            const actions = `
+              ${inRoom ? "" : `<button class="small primary" type="button" data-proxy-checkin="${esc(sid)}|${esc(row.course.course_id)}">代理入室</button>`}
+              <button class="small" type="button" data-paper-open="${esc(sid)}|${esc(row.course.course_id)}">紙回答</button>
+            `;
+            return `
+              <div class="wide-row">
+                <div class="wide-main">
+                  <strong>${esc(row.student?.display_name || sid)}</strong>
+                  <span class="meta">${esc(row.student?.grade || "")} / ${esc(row.student?.school || "高校未登録")} / ${esc(studentNumber(row.student))}</span>
+                  <span class="meta">${esc(courseShort(row.course))}</span>
+                </div>
+                <div class="wide-status status-row">
+                  <span class="chip ${statusColor(row.attendance.checkin_status)}">${esc(row.attendance.checkin_status)}${inRoom && row.attendance.checkin_time ? " " + esc(row.attendance.checkin_time) : ""}</span>
+                  <span class="chip ${surveyDone ? "green" : "amber"}">ｱﾝｹｰﾄ${surveyDone ? "済" : "未"}</span>
+                  <span class="chip blue">受講${summary.attended}/${summary.planned}</span>
+                  <span class="chip">過去${past.present}/${past.absent}</span>
+                  ${flags}
+                </div>
+                <div class="wide-actions">${actions}</div>
+              </div>
+            `;
+          })
+          .join("")
+      : '<div class="notice">該当する入室・対象者はありません。</div>';
   }
 
-  function renderHomePaperPanel() {
-    const course = currentStaffCourse();
-    if (!course) return '<div class="notice amber">講座を選択すると、紙回答を講座と生徒に紐づけて登録できます。</div>';
-    const rows = selectedCourseAttendanceRows();
-    const options = rows
-      .map(({ student, attendance }) => `<option value="${esc(attendance.student_id)}">${esc(student?.display_name || attendance.student_id)}</option>`)
+  let attendanceModalCourse = null;
+
+  function openAttendanceTableModal(courseId) {
+    const course = courseById(courseId);
+    if (!course) return;
+    attendanceModalCourse = courseId;
+    const rows = courseAttendanceRows(courseId);
+    const body = rows
+      .map((row) => {
+        const sid = row.attendance.student_id;
+        const student = row.student;
+        const summary = studentPeriodSummary(sid);
+        const past = pastAttendanceSummary(sid);
+        const voiced = state.actions.some((action) => action.action_type === "声かけ予定" && action.target_id === sid);
+        const inRoom = row.attendance.checkin_status === "入室済";
+        const surveyDone = row.survey?.status === "提出済";
+        return `<tr>
+          <td>${esc(student?.display_name || sid)}</td>
+          <td>${esc(student?.school || "-")}</td>
+          <td>${esc(student?.grade || "-")}</td>
+          <td>${esc(studentNumber(student))}</td>
+          <td><span class="chip ${statusColor(row.attendance.checkin_status)}">${esc(row.attendance.checkin_status)}</span></td>
+          <td>${esc(row.attendance.checkin_time || "-")}</td>
+          <td><span class="chip ${surveyDone ? "green" : "amber"}">${surveyDone ? "済" : "未"}</span></td>
+          <td>${esc(row.survey?.submitted_at || "-")}</td>
+          <td>${voiced ? '<span class="chip amber">対象</span>' : "-"}</td>
+          <td>${summary.attended}/${summary.planned}</td>
+          <td>${past.present}/${past.absent}</td>
+          <td>${esc(row.attendance.exception_note || row.attendance.corrected_reason || "-")}</td>
+          <td class="nowrap">${inRoom ? "" : `<button class="small" type="button" data-proxy-checkin="${esc(sid)}|${esc(courseId)}">代理</button>`}<button class="small" type="button" data-paper-open="${esc(sid)}|${esc(courseId)}">紙</button></td>
+        </tr>`;
+      })
       .join("");
-    return `
-      <label>生徒<select id="paperStudent">${options}</select></label>
-      <label style="margin-top:10px">対象講座<select id="paperCourse"><option value="${esc(course.course_id)}">${esc(courseShort(course))}</option></select></label>
-      <div class="form-grid" style="margin-top:10px; grid-template-columns:repeat(2,minmax(0,1fr))">
-        <label>満足度<select id="paperSatisfaction"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
-        <label>難易度<select id="paperDifficulty"><option>易しい</option><option selected>ちょうどよい</option><option>難しい</option></select></label>
-        <label>理解度<select id="paperUnderstanding"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
-        <label>相談希望<select id="paperConsultation"><option value="no">なし</option><option value="yes">あり</option></select></label>
-      </div>
-      <label style="margin-top:10px">コメント<textarea id="paperComment">紙回答を代理入力</textarea></label>
-      <button id="paperButton" class="primary" type="button" style="width:100%; margin-top:10px">紙回答を登録</button>
-    `;
+    openModal(
+      "出席状況 / " + courseShort(course),
+      `
+        <div class="stack">
+          ${itemHtml(esc(courseShort(course)), esc(courseMeta(course)), courseStatusChip(course))}
+          <div class="table-scroll">
+            <table class="dense">
+              <thead><tr><th>氏名</th><th>高校</th><th>学年</th><th>生徒番号</th><th>出席</th><th>打刻</th><th>ｱﾝｹｰﾄ</th><th>回答時刻</th><th>声かけ</th><th>受講ｺﾏ</th><th>過去出欠</th><th>備考</th><th>操作</th></tr></thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>
+      `
+    );
   }
 
-  function renderHomeSurveyPanel() {
-    const course = currentStaffCourse();
-    if (!course) return '<div class="notice amber">講座を選択すると、回答状況・傾向・コメントを確認できます。</div>';
-    const rows = selectedCourseAttendanceRows();
+  let surveyModalCourse = null;
+
+  function surveyBodyHtml(course) {
+    const rows = courseAttendanceRows(course.course_id);
     const target = rows.length;
     const submitted = rows.filter((row) => row.survey?.status === "提出済");
     const pending = rows.filter((row) => row.survey?.status !== "提出済");
@@ -1537,9 +1537,7 @@
       const nums = responses.map((response) => numberValue(response[key])).filter(Boolean);
       return nums.length ? (nums.reduce((sum, value) => sum + value, 0) / nums.length).toFixed(1) : "-";
     };
-    const diffDist = ["易しい", "ちょうどよい", "難しい"]
-      .map((level) => `${level} ${responses.filter((response) => response.difficulty === level).length}`)
-      .join(" / ");
+    const diffDist = ["易しい", "ちょうどよい", "難しい"].map((level) => `${level} ${responses.filter((response) => response.difficulty === level).length}`).join(" / ");
     const metricsHtml = [
       metric("回答率", `${target ? Math.round((submitted.length / target) * 100) : 0}%`),
       metric("回答済", `${submitted.length}/${target}`),
@@ -1547,9 +1545,7 @@
       metric("理解度平均", avg("understanding")),
     ].join("");
     const pendingHtml = pending.length
-      ? pending
-          .map((row) => itemHtml(esc(row.student?.display_name || row.attendance.student_id), `${esc(row.student?.grade || "")} / 未回答`, '<span class="chip amber">未回答</span>'))
-          .join("")
+      ? pending.map((row) => itemHtml(esc(row.student?.display_name || row.attendance.student_id), `${esc(row.student?.grade || "")} / 未回答`, '<span class="chip amber">未回答</span>')).join("")
       : '<div class="notice green">未回答者はいません。</div>';
     const commentRows = submitted.filter((row) => row.survey?.comment);
     const commentsHtml = commentRows.length
@@ -1574,42 +1570,101 @@
       <div class="metric-grid" style="margin-top:12px">${metricsHtml}</div>
       <div class="notice" style="margin-top:10px">難易度分布: ${esc(diffDist)}</div>
       <div class="grid-2" style="margin-top:12px">
-        <div>
-          <h3 class="section-title">未回答者（${pending.length}名）</h3>
-          <div class="stack" style="margin-top:8px">${pendingHtml}</div>
-        </div>
-        <div>
-          <h3 class="section-title">コメント・相談</h3>
-          <div class="stack" style="margin-top:8px">${commentsHtml}</div>
-        </div>
+        <div><h3 class="section-title">未回答者（${pending.length}名）</h3><div class="stack" style="margin-top:8px">${pendingHtml}</div></div>
+        <div><h3 class="section-title">コメント・相談</h3><div class="stack" style="margin-top:8px">${commentsHtml}</div></div>
       </div>
     `;
   }
 
-  function renderHomeRiskPanel() {
-    const course = currentStaffCourse();
-    if (!course) return '<div class="notice amber">講座を選択すると、講座に関連する異常と声かけ候補を確認できます。</div>';
-    const anomalies = detectAnomalies().filter((item) => item.detail.includes(course.course_name) || item.detail.includes(course.room));
-    const shortageRows = computeShortages().slice(0, 6);
-    return `
-      <div class="grid-2">
-        <div>
-          <h3 class="section-title">異常</h3>
-          <div class="stack" style="margin-top:10px">${
-            anomalies.length ? anomalies.map((item) => itemHtml(esc(item.type), esc(item.detail), '<span class="chip red">未確認</span>')).join("") : '<div class="notice green">この講座の異常はありません。</div>'
-          }</div>
-        </div>
-        <div>
-          <h3 class="section-title">声かけ候補</h3>
-          <div class="stack" style="margin-top:10px">${
-            shortageRows.length
-              ? shortageRows.map((row) => itemHtml(esc(studentName(row.student_id)), `${esc(row.scope)} / ${row.actual}/${row.threshold} 不足${row.shortage}`, `<button class="small" type="button" data-shortage-voice="${esc(row.student_id)}|${esc(row.scope)}コマ数不足">声かけ</button>`)).join("")
-              : '<div class="notice green">基準未達はありません。</div>'
-          }</div>
-        </div>
-      </div>
-    `;
+  function openSurveyModal(courseId) {
+    const course = courseById(courseId);
+    if (!course) return;
+    surveyModalCourse = courseId;
+    openModal("アンケート状況 / " + courseShort(course), `<div class="stack">${surveyBodyHtml(course)}</div>`);
   }
+
+  function proxyCheckin(studentId, courseId, reason) {
+    const course = courseById(courseId);
+    if (!course || !studentId) return;
+    const attendance = attendanceFor(studentId, courseId, true);
+    const before = attendance.checkin_status;
+    attendance.checkin_status = "入室済";
+    attendance.checkin_time = attendance.checkin_time || nowStamp().slice(11);
+    attendance.method = "代理";
+    attendance.exception_note = reason || "スマホ忘れ本人確認済";
+    attendance.corrected_by = "staff-takahashi";
+    attendance.corrected_reason = attendance.exception_note;
+    attendance.confirmed_status = "確認済";
+    addAction({
+      role: "staff",
+      action_type: "代理入室",
+      target_type: "attendance",
+      target_id: attendance.attendance_id,
+      before_value: before,
+      after_value: "入室済",
+      reason: attendance.exception_note,
+    });
+    saveState();
+    renderStaff();
+    if (attendanceModalCourse && qs("#detailModal")?.classList.contains("open")) openAttendanceTableModal(attendanceModalCourse);
+    showToast("代理入室を記録しました。");
+  }
+
+  function openPaperModal(studentId, courseId) {
+    const student = studentById(studentId);
+    const course = courseById(courseId);
+    if (!student || !course) return;
+    openModal(
+      "紙回答入力 / " + courseShort(course),
+      `
+        <div class="stack" data-paper-student="${esc(studentId)}" data-paper-course="${esc(courseId)}">
+          ${itemHtml(esc(student.display_name), esc(courseShort(course)))}
+          <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+            <label>満足度<select id="modalPaperSat"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
+            <label>難易度<select id="modalPaperDiff"><option>易しい</option><option selected>ちょうどよい</option><option>難しい</option></select></label>
+            <label>理解度<select id="modalPaperUnd"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></label>
+            <label>相談希望<select id="modalPaperConsult"><option value="no">なし</option><option value="yes">あり</option></select></label>
+          </div>
+          <label>コメント<textarea id="modalPaperComment">紙回答を代理入力</textarea></label>
+          <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" id="modalSavePaper" type="button">登録</button></div>
+        </div>
+      `
+    );
+  }
+
+  function savePaperFromModal() {
+    const wrap = qs("[data-paper-student]");
+    if (!wrap) return;
+    const studentId = wrap.dataset.paperStudent;
+    const courseId = wrap.dataset.paperCourse;
+    const response = surveyFor(studentId, courseId, true);
+    const before = response.status;
+    response.status = "提出済";
+    response.satisfaction = qs("#modalPaperSat").value;
+    response.difficulty = qs("#modalPaperDiff").value;
+    response.understanding = qs("#modalPaperUnd").value;
+    response.consultation = qs("#modalPaperConsult").value;
+    response.comment = qs("#modalPaperComment").value.trim() || "紙回答を代理入力";
+    response.submitted_at = nowStamp();
+    response.input_method = "paper";
+    response.input_by = "staff-takahashi";
+    attendanceFor(studentId, courseId, true).survey_status = "提出済";
+    addAction({
+      role: "staff",
+      action_type: "紙回答入力",
+      target_type: "survey",
+      target_id: response.response_id,
+      before_value: before,
+      after_value: "提出済",
+      reason: "紙回答回収",
+    });
+    saveState();
+    renderStaff();
+    if (attendanceModalCourse) openAttendanceTableModal(attendanceModalCourse);
+    else closeModalWindow();
+    showToast("紙回答を登録しました。");
+  }
+
 
   function thresholdForGrade(grade) {
     return (
@@ -1619,17 +1674,40 @@
     );
   }
 
+  function masterEditLabel(editing) {
+    return editing ? "閲覧に戻る" : "編集";
+  }
+
+  function applyMasterEditButton(selector, key) {
+    const btn = qs(selector);
+    if (btn) btn.textContent = masterEditLabel(state.ui.masterEdit[key]);
+  }
+
+  function syncMasterFilter(selector, key) {
+    const el = qs(selector);
+    if (el && document.activeElement !== el) el.value = state.ui.masterFilter[key] || "";
+  }
+
+  function courseStatusLabel(course) {
+    const map = { active: "通常", cancelled: "休講", rescheduled: "日程変更", room_changed: "教室変更", time_changed: "時間変更", teacher_changed: "講師変更" };
+    return map[course?.status] || course?.status || "";
+  }
+
   function renderStaffMaster() {
-    const toggleStudents = qs("#toggleMasterStudents");
-    const toggleCourses = qs("#toggleMasterCourses");
-    const toggleSettings = qs("#toggleMasterSettings");
-    if (toggleStudents) toggleStudents.checked = state.ui.staffShowStudents;
-    if (toggleCourses) toggleCourses.checked = state.ui.staffShowCourses;
-    if (toggleSettings) toggleSettings.checked = state.ui.staffShowSettings;
-    qs("#masterStudentsPanel")?.classList.toggle("is-hidden", !state.ui.staffShowStudents);
-    qs("#masterCoursesPanel")?.classList.toggle("is-hidden", !state.ui.staffShowCourses);
-    qs("#masterSettingsPanel")?.classList.toggle("is-hidden", !state.ui.staffShowSettings);
     const grades = [...new Set([...state.students.map((student) => student.grade), ...state.thresholds.map((threshold) => threshold.grade)])].filter(Boolean);
+    const editingThresholds = state.ui.masterEdit.thresholds;
+    applyMasterEditButton("#editThresholds", "thresholds");
+    qs("#thresholdView")?.classList.toggle("is-hidden", editingThresholds);
+    qs("#thresholdEdit")?.classList.toggle("is-hidden", !editingThresholds);
+    const thresholdView = qs("#thresholdView");
+    if (thresholdView) {
+      thresholdView.innerHTML = grades
+        .map((grade) => {
+          const threshold = thresholdForGrade(grade);
+          return itemHtml(`${esc(grade)} 受講コマ達成基準`, `${esc(threshold?.term || "第1期")} / ${esc(threshold?.threshold_periods || "0")} コマ以上`);
+        })
+        .join("");
+    }
     const gradeSelect = qs("#thresholdGrade");
     if (gradeSelect) {
       gradeSelect.innerHTML = grades.map((grade) => `<option>${esc(grade)}</option>`).join("");
@@ -1638,25 +1716,185 @@
     const selectedThreshold = thresholdForGrade(gradeSelect?.value || grades[0]);
     const thresholdValue = qs("#thresholdValue");
     if (thresholdValue && selectedThreshold) thresholdValue.value = selectedThreshold.threshold_periods;
-    qs("#masterStudents").innerHTML = state.students
-      .map((student) => `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td><button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button></td></tr>`)
-      .join("");
-    qs("#masterCourses").innerHTML = sortCourses(state.courses)
-      .map((course) => `<tr><td>${esc(course.course_name)}<br><span class="meta">${esc(course.course_id)}</span></td><td>${esc(course.grade)} ${esc(course.venue)} ${esc(course.room)}<br><span class="meta">${esc(course.date)} ${esc(course.start_time)}</span></td><td>${courseStatusChip(course)}</td><td>${esc(course.teacher_name)}</td><td><button class="small" type="button" data-edit-course="${esc(course.course_id)}">編集</button></td></tr>`)
-      .join("");
+
+    renderMasterStudents();
+    renderMasterCourses();
+    renderMasterStaff();
+    renderMasterApplications();
+
     const venues = [...new Set(state.courses.map((course) => course.venue))];
-    const thresholdCards = grades
-      .map((grade) => {
-        const threshold = thresholdForGrade(grade);
-        return itemHtml(`${esc(grade)} 受講コマ達成基準`, `${esc(threshold?.term || "第1期")} / ${esc(threshold?.threshold_periods || "0")} コマ以上`);
-      })
-      .join("");
-    qs("#staffSettings").innerHTML = venues
-      .map((venue) => {
-        const rooms = [...new Set(state.courses.filter((course) => course.venue === venue).map((course) => course.room))];
-        return itemHtml(esc(venue), `教室 ${esc(rooms.join(" / "))}<br>CSV出力権限: 校舎スタッフ以上`);
-      })
-      .join("") + thresholdCards;
+    const settings = qs("#staffSettings");
+    if (settings) {
+      settings.innerHTML = venues
+        .map((venue) => {
+          const rooms = [...new Set(state.courses.filter((course) => course.venue === venue).map((course) => course.room))];
+          return itemHtml(esc(venue), `教室 ${esc(rooms.join(" / "))}<br>CSV出力権限: 校舎スタッフ以上`);
+        })
+        .join("");
+    }
+  }
+
+  function renderMasterStudents() {
+    const editing = state.ui.masterEdit.students;
+    applyMasterEditButton("#editStudents", "students");
+    syncMasterFilter("#filterStudents", "students");
+    const query = (state.ui.masterFilter.students || "").trim().toLowerCase();
+    const rows = state.students.filter((student) => !query || `${student.display_name} ${student.grade} ${student.venue} ${student.advisor} ${studentNumber(student)}`.toLowerCase().includes(query));
+    const body = qs("#masterStudents");
+    if (body) {
+      body.innerHTML =
+        rows
+          .map(
+            (student) =>
+              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td>${editing ? `<button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
+          )
+          .join("") || '<tr><td colspan="5">該当する生徒はいません。</td></tr>';
+    }
+  }
+
+  function renderMasterCourses() {
+    const editing = state.ui.masterEdit.courses;
+    applyMasterEditButton("#editCourses", "courses");
+    syncMasterFilter("#filterCourses", "courses");
+    const query = (state.ui.masterFilter.courses || "").trim().toLowerCase();
+    const rows = sortCourses(state.courses).filter(
+      (course) => !query || `${course.course_name} ${course.grade} ${course.subject} ${course.venue} ${course.room} ${courseStatusLabel(course)} ${course.date} ${course.teacher_name} ${course.course_id}`.toLowerCase().includes(query)
+    );
+    const body = qs("#masterCourses");
+    if (body) {
+      body.innerHTML =
+        rows
+          .map(
+            (course) =>
+              `<tr><td>${esc(course.course_name)}<br><span class="meta">${esc(course.course_id)}</span></td><td>${esc(course.grade)} ${esc(course.venue)} ${esc(course.room)}<br><span class="meta">${esc(course.date)} ${esc(course.start_time)}</span></td><td>${courseStatusChip(course)}</td><td>${esc(course.teacher_name)}</td><td>${editing ? `<button class="small" type="button" data-edit-course="${esc(course.course_id)}">編集</button>` : ""}</td></tr>`
+          )
+          .join("") || '<tr><td colspan="5">該当する講座はありません。</td></tr>';
+    }
+  }
+
+  function renderMasterStaff() {
+    const editing = state.ui.masterEdit.staff;
+    applyMasterEditButton("#editStaff", "staff");
+    syncMasterFilter("#filterStaff", "staff");
+    const query = (state.ui.masterFilter.staff || "").trim().toLowerCase();
+    const rows = state.staffMaster.filter((member) => !query || `${member.name} ${member.venue} ${member.role} ${member.staff_id}`.toLowerCase().includes(query));
+    const body = qs("#masterStaff");
+    if (body) {
+      body.innerHTML =
+        rows
+          .map(
+            (member) =>
+              `<tr><td>${esc(member.staff_id)}</td><td>${esc(member.name)}</td><td>${esc(member.venue)}</td><td>${esc(member.role)}</td><td>${editing ? `<button class="small" type="button" data-edit-staff="${esc(member.staff_id)}">編集</button>` : ""}</td></tr>`
+          )
+          .join("") || '<tr><td colspan="5">該当する担当者はいません。</td></tr>';
+    }
+  }
+
+  function renderMasterApplications() {
+    const editing = state.ui.masterEdit.applications;
+    applyMasterEditButton("#editApplications", "applications");
+    syncMasterFilter("#filterApplications", "applications");
+    const query = (state.ui.masterFilter.applications || "").trim().toLowerCase();
+    const rows = state.applications.filter((app) => {
+      const sn = studentName(app.student_id);
+      const cs = courseShort(courseById(app.course_id));
+      return !query || `${sn} ${cs} ${app.status} ${app.source} ${app.applied_at} ${app.student_id} ${app.course_id}`.toLowerCase().includes(query);
+    });
+    const body = qs("#masterApplications");
+    if (body) {
+      body.innerHTML =
+        rows
+          .map((app) => {
+            const color = app.status === "申込済" ? "green" : app.status === "キャンセル" ? "red" : "amber";
+            return `<tr><td>${esc(studentName(app.student_id))}<br><span class="meta">${esc(app.student_id)}</span></td><td>${esc(courseShort(courseById(app.course_id)))}<br><span class="meta">${esc(app.course_id)}</span></td><td>${esc(app.applied_at)}</td><td><span class="chip ${color}">${esc(app.status)}</span></td><td>${esc(app.source)}</td><td>${editing ? `<button class="small" type="button" data-edit-application="${esc(app.application_id)}">編集</button>` : ""}</td></tr>`;
+          })
+          .join("") || '<tr><td colspan="6">該当する申込はありません。</td></tr>';
+    }
+  }
+
+  const MASTER_EXPORT = {
+    students: { filename: "students_master_v2.csv", headers: ["student_id", "student_number", "display_name", "grade", "venue", "advisor", "line_status", "school", "status", "login_id", "password"] },
+    courses: { filename: "courses_master_v2.csv", headers: ["course_id", "grade", "subject", "course_name", "term", "venue", "room", "date", "start_time", "end_time", "period_count", "status", "teacher_id", "teacher_name", "survey_required", "qr_mode", "notice", "materials"] },
+    staff: { filename: "staff_master_v2.csv", headers: ["staff_id", "name", "venue", "role"] },
+    applications: { filename: "applications_master_v2.csv", headers: ["application_id", "student_id", "course_id", "applied_at", "status", "source"] },
+  };
+
+  function exportMasterCsv(key) {
+    const def = MASTER_EXPORT[key];
+    if (!def) return;
+    const data = key === "students" ? state.students : key === "courses" ? state.courses : key === "staff" ? state.staffMaster : state.applications;
+    downloadCsv(def.filename, toCsv(data, def.headers));
+    addAction({ role: "staff", action_type: "マスタCSV出力", target_type: "master", target_id: key, after_value: `${data.length}件`, reason: "編集後CSV出力" });
+    saveState();
+    renderStaff();
+    showToast(`${def.filename} を出力しました。`);
+  }
+
+  function openStaffMasterModal(staffId) {
+    const member = state.staffMaster.find((item) => item.staff_id === staffId);
+    if (!member) return;
+    const venues = [...new Set([...state.courses.map((course) => course.venue), member.venue])];
+    openModal(
+      "担当者マスタ編集",
+      `
+        <div class="stack" data-edit-staff-id="${esc(member.staff_id)}">
+          ${itemHtml(esc(member.name), `${esc(member.staff_id)} / ${esc(member.venue)} / ${esc(member.role)}`)}
+          <div class="form-grid">
+            <label>氏名<input id="modalStaffName" value="${esc(member.name)}"></label>
+            <label>校舎<select id="modalStaffVenue">${venues.map((venue) => `<option ${venue === member.venue ? "selected" : ""}>${esc(venue)}</option>`).join("")}</select></label>
+            <label>役割<input id="modalStaffRole" value="${esc(member.role)}"></label>
+          </div>
+          <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" id="modalSaveStaff" type="button">保存</button></div>
+        </div>
+      `
+    );
+  }
+
+  function saveStaffMasterFromModal() {
+    const member = state.staffMaster.find((item) => item.staff_id === qs("[data-edit-staff-id]")?.dataset.editStaffId);
+    if (!member) return;
+    const before = `${member.name} / ${member.venue} / ${member.role}`;
+    member.name = qs("#modalStaffName").value.trim();
+    member.venue = qs("#modalStaffVenue").value;
+    member.role = qs("#modalStaffRole").value.trim();
+    addAction({ role: "staff", action_type: "担当者マスタ更新", target_type: "staff", target_id: member.staff_id, before_value: before, after_value: `${member.name} / ${member.venue} / ${member.role}`, reason: "モーダル編集" });
+    saveState();
+    closeModalWindow();
+    renderStaff();
+    showToast("担当者マスタを保存しました。");
+  }
+
+  function openApplicationModal(appId) {
+    const app = state.applications.find((item) => item.application_id === appId);
+    if (!app) return;
+    openModal(
+      "申込情報編集",
+      `
+        <div class="stack" data-edit-app-id="${esc(app.application_id)}">
+          ${itemHtml(esc(studentName(app.student_id)), esc(courseShort(courseById(app.course_id))))}
+          <div class="form-grid">
+            <label>申込日<input id="modalAppDate" value="${esc(app.applied_at)}"></label>
+            <label>状態<select id="modalAppStatus">${["申込済", "仮申込", "キャンセル"].map((status) => `<option ${status === app.status ? "selected" : ""}>${esc(status)}</option>`).join("")}</select></label>
+            <label>経路<select id="modalAppSource">${["窓口", "Web", "電話", "Access"].map((source) => `<option ${source === app.source ? "selected" : ""}>${esc(source)}</option>`).join("")}</select></label>
+          </div>
+          <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" id="modalSaveApplication" type="button">保存</button></div>
+        </div>
+      `
+    );
+  }
+
+  function saveApplicationFromModal() {
+    const app = state.applications.find((item) => item.application_id === qs("[data-edit-app-id]")?.dataset.editAppId);
+    if (!app) return;
+    const before = `${app.applied_at} / ${app.status} / ${app.source}`;
+    app.applied_at = qs("#modalAppDate").value.trim();
+    app.status = qs("#modalAppStatus").value;
+    app.source = qs("#modalAppSource").value;
+    addAction({ role: "staff", action_type: "申込情報更新", target_type: "application", target_id: app.application_id, before_value: before, after_value: `${app.applied_at} / ${app.status} / ${app.source}`, reason: "モーダル編集" });
+    saveState();
+    closeModalWindow();
+    renderStaff();
+    showToast("申込情報を保存しました。");
   }
 
   function saveStaffSettings() {
@@ -2062,70 +2300,6 @@
     showToast("出席状態を更新しました。");
   }
 
-  function staffProxyCheckin() {
-    const studentId = qs("#proxyStudent").value;
-    const course = currentStaffCourse();
-    if (!course || !studentId) {
-      showToast("講座と生徒を選択してください。");
-      return;
-    }
-    const courseId = course.course_id;
-    const attendance = attendanceFor(studentId, courseId, true);
-    const before = attendance.checkin_status;
-    attendance.checkin_status = "入室済";
-    attendance.checkin_time = attendance.checkin_time || nowStamp().slice(11);
-    attendance.method = "代理";
-    attendance.exception_note = qs("#proxyReason").value.trim();
-    attendance.corrected_by = "staff-takahashi";
-    attendance.corrected_reason = attendance.exception_note;
-    attendance.confirmed_status = "確認済";
-    addAction({
-      role: "staff",
-      action_type: "代理入室",
-      target_type: "attendance",
-      target_id: attendance.attendance_id,
-      before_value: before,
-      after_value: "入室済",
-      reason: attendance.exception_note,
-    });
-    saveState();
-    renderStaff();
-    showToast("代理入室を記録しました。");
-  }
-
-  function staffPaperSurvey() {
-    const studentId = qs("#paperStudent").value;
-    const courseId = qs("#paperCourse").value;
-    if (!studentId || !courseId) {
-      showToast("講座と生徒を選択してください。");
-      return;
-    }
-    const response = surveyFor(studentId, courseId, true);
-    const before = response.status;
-    response.status = "提出済";
-    response.satisfaction = qs("#paperSatisfaction")?.value || "4";
-    response.difficulty = qs("#paperDifficulty")?.value || "ちょうどよい";
-    response.understanding = qs("#paperUnderstanding")?.value || "4";
-    response.comment = qs("#paperComment")?.value.trim() || "紙回答を代理入力";
-    response.consultation = qs("#paperConsultation")?.value || "no";
-    response.submitted_at = nowStamp();
-    response.input_method = "paper";
-    response.input_by = "staff-takahashi";
-    const attendance = attendanceFor(studentId, courseId, true);
-    attendance.survey_status = "提出済";
-    addAction({
-      role: "staff",
-      action_type: "紙回答入力",
-      target_type: "survey",
-      target_id: response.response_id,
-      before_value: before,
-      after_value: "提出済",
-      reason: "紙回答回収",
-    });
-    saveState();
-    renderStaff();
-    showToast("紙回答を登録しました。");
-  }
 
   function renderSurveyTrend(container, courseId) {
     if (!container) return;
@@ -2209,6 +2383,15 @@
   }
 
   function renderStaffRisk() {
+    const view = state.ui.riskView || "all";
+    qsa("[data-risk-view]").forEach((button) => button.classList.toggle("selected", button.dataset.riskView === view));
+    qs("#riskPanels")?.classList.toggle("single", view !== "all");
+    const showPanel = (selector, key) => qs(selector)?.classList.toggle("is-hidden", !(view === "all" || view === key));
+    showPanel("#riskAnomalyPanel", "anomaly");
+    showPanel("#riskShortagePanel", "shortage");
+    showPanel("#riskVoicePanel", "voice");
+    showPanel("#riskLogPanel", "log");
+
     const anomalies = detectAnomalies();
     qs("#anomalyRows").innerHTML = anomalies
       .map((item) => {
@@ -2222,19 +2405,24 @@
       .map((row) => {
         const action = voiceActionFor(row.student_id, row.scope);
         const status = action?.after_value || "未対応";
+        const assignee = action?.assignee ? ` / 担当 ${esc(action.assignee)}` : "";
         const op =
           status === "対応済み"
             ? '<span class="chip green">対応済み</span>'
             : status === "対応予定"
               ? `<button class="small" type="button" data-shortage-complete="${esc(row.student_id)}|${esc(row.scope)}">対応済みにする</button>`
               : `<button class="small" type="button" data-shortage-voice="${esc(row.student_id)}|${esc(row.scope)}コマ数不足">声かけ</button>`;
-        return `<tr><td>${esc(studentName(row.student_id))}</td><td>${esc(row.scope)}</td><td>${row.actual}/${row.threshold} 不足${row.shortage}<br><span class="chip ${status === "対応済み" ? "green" : status === "対応予定" ? "amber" : ""}">${esc(status)}</span></td><td>${op}</td></tr>`;
+        return `<tr><td>${esc(studentName(row.student_id))}</td><td>${esc(row.scope)}</td><td>${row.actual}/${row.threshold} 不足${row.shortage}<br><span class="chip ${status === "対応済み" ? "green" : status === "対応予定" ? "amber" : ""}">${esc(status)}</span>${assignee}</td><td>${op}</td></tr>`;
       })
       .join("") || '<tr><td colspan="4">基準未達はありません。</td></tr>';
     qs("#voiceStudent").innerHTML = state.students.map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)}</option>`).join("");
+    const assigneeSelect = qs("#voiceAssignee");
+    if (assigneeSelect) {
+      assigneeSelect.innerHTML = state.staffMaster.map((member) => `<option value="${esc(member.name)}">${esc(member.name)}（${esc(member.venue)}）</option>`).join("") || `<option value="">担当者なし</option>`;
+    }
     qs("#voiceRows").innerHTML = state.actions
       .filter((action) => action.action_type.includes("声かけ"))
-      .map((action) => itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)} / ${esc(action.after_value)}`, '<span class="chip amber">声かけ</span>'))
+      .map((action) => itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)} / ${esc(action.after_value)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`, '<span class="chip amber">声かけ</span>'))
       .join("") || '<div class="notice">声かけ予定はありません。</div>';
     qs("#operationLogRows").innerHTML = state.actions
       .slice(0, 20)
@@ -2269,9 +2457,11 @@
   function staffAddVoiceAction() {
     const studentId = qs("#voiceStudent").value;
     const reason = qs("#voiceReason").value.trim();
+    const assignee = qs("#voiceAssignee")?.value || "";
     const scope = "受講コマ";
     const action = markVoiceStatus(studentId, scope, "対応予定");
     action.reason = reason;
+    action.assignee = assignee;
     saveState();
     renderStaff();
     showToast("声かけ予定を追加しました。");
@@ -2382,17 +2572,21 @@
     if (preview) preview.textContent = latestExport.csv;
   }
 
-  function downloadLatestExport() {
-    renderExportPreview();
-    const blob = new Blob([latestExport.csv], { type: "text/csv;charset=utf-8" });
+  function downloadCsv(filename, csv) {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = latestExport.filename;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadLatestExport() {
+    renderExportPreview();
+    downloadCsv(latestExport.filename, latestExport.csv);
     addAction({
       role: "staff",
       action_type: "CSV出力",
@@ -2638,41 +2832,44 @@
     return flags;
   }
 
-  function tabletCheckins(venue) {
-    return state.attendance
-      .filter((record) => record.checkin_status === "入室済")
-      .map((record) => ({ record, course: courseById(record.course_id) }))
-      .filter((row) => row.course && row.course.date === APP_DATE && (!venue || row.course.venue === venue))
-      .sort((a, b) => String(b.record.checkin_time).localeCompare(String(a.record.checkin_time)));
-  }
+  let tabletAuthed = false;
 
   function bindTabletOnce() {
+    qs("#tabletLoginButton")?.addEventListener("click", () => {
+      const id = qs("#tabletAdminId")?.value.trim();
+      const pw = qs("#tabletAdminPw")?.value.trim();
+      const err = qs("#tabletLoginError");
+      if (id === "admin" && pw === "admin1234") {
+        tabletAuthed = true;
+        if (err) err.classList.add("is-hidden");
+        renderTablet();
+      } else if (err) {
+        err.textContent = "管理者IDまたはパスワードが違います。";
+        err.classList.remove("is-hidden");
+      }
+    });
+    qs("#tabletLogout")?.addEventListener("click", () => {
+      tabletAuthed = false;
+      renderTablet();
+    });
     qs("#tabletVenueSelect")?.addEventListener("change", (event) => {
       state.selected.tabletVenue = event.target.value;
-      state.selected.tabletStudentId = "";
       state.selected.tabletCourseId = "";
+      state.selected.tabletStudentId = "";
       saveState();
       renderTablet();
     });
-    qs("#tabletStudent")?.addEventListener("change", (event) => {
-      state.selected.tabletStudentId = event.target.value;
-      const first = sortCourses(
-        studentCourses(state.selected.tabletStudentId).filter((course) => course.venue === state.selected.tabletVenue && course.date === APP_DATE)
-      )[0];
-      state.selected.tabletCourseId = first?.course_id || "";
-      saveState();
-      renderTablet();
-    });
-    qs("#tabletCourse")?.addEventListener("change", (event) => {
+    qs("#tabletCourseSelect")?.addEventListener("change", (event) => {
       state.selected.tabletCourseId = event.target.value;
+      state.selected.tabletStudentId = "";
+      saveState();
+      renderTablet();
+    });
+    qs("#tabletScanStudent")?.addEventListener("change", (event) => {
+      state.selected.tabletStudentId = event.target.value;
       saveState();
     });
     qs("#tabletScanButton")?.addEventListener("click", registerTabletCheckin);
-    qs("#tabletSearch")?.addEventListener("input", (event) => {
-      state.ui.tabletSearch = event.target.value;
-      saveState();
-      renderTabletSelectors();
-    });
     window.addEventListener("storage", (event) => {
       if (event.key !== STORAGE_KEY) return;
       const next = loadStoredState();
@@ -2692,54 +2889,57 @@
       venueSelect.value = state.selected.tabletVenue;
     }
     const venue = state.selected.tabletVenue;
-    const query = (state.ui.tabletSearch || "").trim().toLowerCase();
-    const todayCourseIds = state.courses.filter((course) => course.venue === venue && course.date === APP_DATE).map((course) => course.course_id);
-    const candidateIds = [...new Set(activeEnrollments().filter((enrollment) => todayCourseIds.includes(enrollment.course_id)).map((enrollment) => enrollment.student_id))];
-    const candidates = candidateIds
-      .map((id) => studentById(id))
-      .filter(Boolean)
-      .filter((student) => !query || `${student.display_name} ${studentNumber(student)} ${student.grade} ${student.school}`.toLowerCase().includes(query));
-    const studentSelect = qs("#tabletStudent");
-    if (studentSelect) {
-      studentSelect.innerHTML = candidates
-        .map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)} / ${esc(student.grade)} / ${esc(studentNumber(student))}</option>`)
-        .join("") || `<option value="">該当生徒なし</option>`;
-      if (!candidates.some((student) => student.student_id === state.selected.tabletStudentId)) state.selected.tabletStudentId = candidates[0]?.student_id || "";
-      studentSelect.value = state.selected.tabletStudentId;
-    }
-    const searchInput = qs("#tabletSearch");
-    if (searchInput && document.activeElement !== searchInput) searchInput.value = state.ui.tabletSearch || "";
-    const studentTodayCourses = sortCourses(
-      studentCourses(state.selected.tabletStudentId).filter((course) => course.venue === venue && course.date === APP_DATE)
-    );
-    const courseSelect = qs("#tabletCourse");
+    const courses = sortCourses(state.courses.filter((course) => course.venue === venue && course.date === APP_DATE));
+    const courseSelect = qs("#tabletCourseSelect");
     if (courseSelect) {
-      courseSelect.innerHTML = studentTodayCourses
+      courseSelect.innerHTML = courses
         .map((course) => `<option value="${esc(course.course_id)}">${esc(courseShort(course))} ${esc(course.start_time)}</option>`)
-        .join("") || `<option value="">対象講座なし</option>`;
-      if (!studentTodayCourses.some((course) => course.course_id === state.selected.tabletCourseId)) state.selected.tabletCourseId = studentTodayCourses[0]?.course_id || "";
+        .join("") || `<option value="">本日の講座なし</option>`;
+      if (!courses.some((course) => course.course_id === state.selected.tabletCourseId)) state.selected.tabletCourseId = courses[0]?.course_id || "";
       courseSelect.value = state.selected.tabletCourseId;
+    }
+    const course = courseById(state.selected.tabletCourseId);
+    const studentSelect = qs("#tabletScanStudent");
+    if (studentSelect) {
+      const students = (course ? courseStudentIds(course.course_id) : []).map((id) => studentById(id)).filter(Boolean);
+      studentSelect.innerHTML = students
+        .map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)} / ${esc(student.grade)} / ${esc(studentNumber(student))}</option>`)
+        .join("") || `<option value="">対象生徒なし</option>`;
+      if (!students.some((student) => student.student_id === state.selected.tabletStudentId)) state.selected.tabletStudentId = students[0]?.student_id || "";
+      studentSelect.value = state.selected.tabletStudentId;
     }
   }
 
   function registerTabletCheckin() {
-    const studentId = state.selected.tabletStudentId;
-    const courseId = qs("#tabletCourse")?.value || state.selected.tabletCourseId;
+    const courseId = qs("#tabletCourseSelect")?.value || state.selected.tabletCourseId;
+    const studentId = qs("#tabletScanStudent")?.value || state.selected.tabletStudentId;
     const course = courseById(courseId);
     const student = studentById(studentId);
-    if (!student || !course) {
-      tabletLastResult = '<div class="notice red">本日この校舎で受講予定の生徒を選択してください。</div>';
+    if (!course) {
+      showToast("読取対象の講座を選択してください。");
+      return;
+    }
+    if (!student) {
+      tabletLastResult = '<div class="notice red"><strong>エラー</strong>：QRを読み取れませんでした。もう一度かざしてください。</div>';
       renderTablet();
-      showToast("対象講座のある生徒を選択してください。");
+      return;
+    }
+    if (!isEnrolled(studentId, courseId) || course.status === "cancelled") {
+      const reason = course.status === "cancelled" ? "この講座は休講です" : "この講座の申込が確認できません";
+      tabletLastResult = `<div class="notice red"><strong>エラー：登録できません</strong><br>${esc(student.display_name)} / ${esc(courseShort(course))}<br>${esc(reason)}。校舎スタッフにお声がけください。</div>`;
+      renderTablet();
+      showToast("エラー：登録できませんでした。");
       return;
     }
     const attendance = attendanceFor(studentId, courseId, true);
     const before = attendance.checkin_status;
-    const warnings = [];
-    if (!isEnrolled(studentId, courseId)) warnings.push("未申込講座");
-    if (course.status === "cancelled") warnings.push("休講講座");
+    if (before === "入室済") {
+      tabletLastResult = `<div class="notice amber"><strong>すでに入室済みです</strong><br>${esc(student.display_name)} / ${esc(courseShort(course))}</div>`;
+      renderTablet();
+      return;
+    }
     attendance.checkin_status = "入室済";
-    attendance.checkin_time = attendance.checkin_time || (course.start_time > "15:00" ? course.start_time : "14:58");
+    attendance.checkin_time = attendance.checkin_time || (course.start_time > "15:00" ? course.start_time : nowStamp().slice(11));
     attendance.method = "校舎QR";
     attendance.confirmed_status = "未確認";
     addAction({
@@ -2752,74 +2952,20 @@
       after_value: "入室済",
       reason: "校舎タブレットで生徒提示QRを読取",
     });
-    const summary = studentPeriodSummary(studentId);
-    const past = pastAttendanceSummary(studentId);
-    tabletLastResult = `
-      <div class="notice ${warnings.length ? "amber" : "green"}">
-        <strong>${esc(student.display_name)}</strong>（${esc(student.grade)} / ${esc(student.school || "高校未登録")}）を入室登録しました。<br>
-        ${esc(courseShort(course))}<br>
-        受講 ${summary.attended}/${summary.planned}コマ ・ 過去 出席${past.present}/欠席${past.absent}
-        ${warnings.length ? `<br><strong>注意:</strong> ${esc(warnings.join(" / "))}` : ""}
-      </div>`;
+    tabletLastResult = `<div class="notice green"><strong>登録完了</strong><br>${esc(student.display_name)} さん（${esc(student.grade)}）<br>${esc(courseShort(course))}<br>入室を受け付けました。</div>`;
     saveState();
     renderTablet();
     showToast(`${student.display_name} を入室登録しました。`);
   }
 
   function renderTablet() {
+    qs("#tabletLogin")?.classList.toggle("is-hidden", tabletAuthed);
+    qs("#tabletScanner")?.classList.toggle("is-hidden", !tabletAuthed);
+    if (!tabletAuthed) return;
     renderTabletSelectors();
-    const venue = state.selected.tabletVenue;
-    const todayCourses = state.courses.filter((course) => course.venue === venue && course.date === APP_DATE);
-    const todayCourseIds = todayCourses.map((course) => course.course_id);
-    const targetIds = new Set();
-    activeEnrollments().forEach((enrollment) => {
-      if (todayCourseIds.includes(enrollment.course_id)) targetIds.add(enrollment.student_id);
-    });
-    const checkins = tabletCheckins(venue);
-    const checkedStudentIds = new Set(checkins.map((row) => row.record.student_id));
-    const metrics = qs("#tabletMetrics");
-    if (metrics) {
-      metrics.innerHTML = [
-        metric("本日の講座", todayCourses.length),
-        metric("対象者", targetIds.size),
-        metric("入室済", checkedStudentIds.size),
-        metric("未入室", Math.max(0, targetIds.size - checkedStudentIds.size)),
-      ].join("");
-    }
     const result = qs("#tabletReadResult");
     if (result) {
-      result.innerHTML = tabletLastResult || '<div class="notice">生徒を選択し「読み取って入室登録」を押すと結果が表示されます。</div>';
-    }
-    const roster = qs("#tabletRoster");
-    if (roster) {
-      roster.innerHTML = checkins.length
-        ? checkins
-            .map(({ record, course }) => {
-              const student = studentById(record.student_id);
-              const summary = studentPeriodSummary(record.student_id);
-              const past = pastAttendanceSummary(record.student_id);
-              const flags = studentRosterFlags(record.student_id, record, course)
-                .map((flag) => `<span class="chip ${flag.color}">${esc(flag.label)}</span>`)
-                .join("");
-              return `
-                <div class="roster-card">
-                  <div class="roster-head">
-                    <div>
-                      <strong>${esc(student?.display_name || record.student_id)}</strong>
-                      <span class="meta">${esc(student?.grade || "")} / ${esc(student?.school || "高校未登録")}</span>
-                    </div>
-                    <span class="chip green">${esc(record.checkin_time || "-")} ${esc(record.method || "")}</span>
-                  </div>
-                  <p class="meta">${esc(courseShort(course))}</p>
-                  <div class="status-row">
-                    <span class="chip blue">受講 ${summary.attended}/${summary.planned}コマ</span>
-                    <span class="chip">過去 出席${past.present}/欠席${past.absent}</span>
-                    ${flags}
-                  </div>
-                </div>`;
-            })
-            .join("")
-        : '<div class="notice">まだ本日の入室登録はありません。生徒QRを読み取ると、氏名・高校・学年・受講コマ数・過去出席歴・各種フラグがここにリアルタイム表示されます。</div>';
+      result.innerHTML = tabletLastResult || '<div class="notice">講座を選び、生徒の提示QRを読み取ると、登録結果がここに大きく表示されます。</div>';
     }
   }
 
