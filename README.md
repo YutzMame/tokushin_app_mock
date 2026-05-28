@@ -64,6 +64,8 @@ preview_v2.show_tablet_qr_app_v2()
 
 議論用にNotebookとして共有する場合は、Colabで `mock_app_v2/colab_discussion_v2.ipynb` を開き、上から順に実行します。画面別にセルを分けてあるため、MTG中は必要な画面だけ再実行できます。
 
+関係者へ共有する場合は `mock_app_v2/colab_share_v2.ipynb`（共有用ノート）を使います。冒頭に共有までの作業チェックリストとリポジトリ取得セットアップ（private時のトークン代替を含む）を入れてあります。共有手順の詳細は `yutz_local/docs/colab_sharing_guide.md` を参照（ローカル管理メモ）。なお GitHub リポジトリが private の場合、Colabの `git clone` は認証が必要なため、Public 化またはトークン方式が必要です。
+
 ## 成果物
 
 ### v2
@@ -76,7 +78,8 @@ preview_v2.show_tablet_qr_app_v2()
 - `mock_app_v2/assets/app_v2.js`: CSV読込、`localStorage` 保存、操作反映、出席状況テーブル、リアルタイム入室、マスタ編集/フィルタ/CSV出力
 - `mock_app_v2/data/*_v2.csv`: v2用の架空サンプルCSV（`courses_v2.csv` は配布物 `materials` 列、`staff_master_v2.csv`＝担当者、`applications_v2.csv`＝申込台帳）
 - `mock_app_v2/colab_preview_v2.py`: Colab表示用のCSS/JS/CSV埋め込みヘルパー
-- `mock_app_v2/colab_discussion_v2.ipynb`: Colab共有・議論用Notebook
+- `mock_app_v2/colab_discussion_v2.ipynb`: Colab議論用Notebook
+- `mock_app_v2/colab_share_v2.ipynb`: Colab共有用Notebook（共有作業チェックリスト＋リポジトリ取得セットアップ込み）
 
 ### 旧モック
 
