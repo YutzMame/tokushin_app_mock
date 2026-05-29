@@ -190,13 +190,13 @@
             <div class="panel-body"><table><thead><tr><th>生徒</th><th>基準</th><th>差分</th><th>操作</th></tr></thead><tbody id="shortageRows"></tbody></table></div>
           </section>
           <section class="panel" id="riskVoicePanel">
-            <div class="panel-head"><h2>声かけ対象者</h2></div>
+            <div class="panel-head"><h2>声かけ・面談リスト</h2></div>
             <div class="panel-body">
-              <label>生徒<select id="voiceStudent"></select></label>
-              <label style="margin-top:10px">担当者<select id="voiceAssignee"></select></label>
-              <label style="margin-top:10px">理由<input id="voiceReason" value="基準未達と未回答が重複"></label>
-              <button class="primary" id="voiceButton" type="button" style="width:100%; margin-top:10px">声かけ予定を追加</button>
-              <div id="voiceRows" class="stack" style="margin-top:10px"></div>
+              <div class="search-row">
+                <label>生徒を選んで対応<select id="respondStudent"></select></label>
+                <button class="primary" id="respondStudentBtn" type="button">対応する</button>
+              </div>
+              <div id="followupList" class="stack" style="margin-top:12px"></div>
             </div>
           </section>
           <section class="panel" id="riskLogPanel">

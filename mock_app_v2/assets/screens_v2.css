@@ -952,6 +952,31 @@ table.dense td {
   color: var(--muted);
 }
 
+.day-group + .day-group {
+  margin-top: 14px;
+}
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--blue);
+  border-radius: 0 6px 6px 0;
+  background: var(--blue-soft);
+  color: #174aa5;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.item .actions {
+  margin-top: 8px;
+}
+
+.item-title .chip {
+  font-weight: 700;
+}
+
 .tab-badge {
   display: inline-grid;
   place-items: center;

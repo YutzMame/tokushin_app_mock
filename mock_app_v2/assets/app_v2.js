@@ -336,6 +336,9 @@
       after_value: action.after_value || "",
       reason: action.reason || "",
       assignee: action.assignee || "",
+      kind: action.kind || "",
+      date: action.date || "",
+      content: action.content || "",
       created_at: action.created_at || nowStamp(),
     });
   }
@@ -1209,7 +1212,10 @@
       saveState();
       renderStaffRealtime();
     });
-    qs("#voiceButton")?.addEventListener("click", staffAddVoiceAction);
+    qs("#respondStudentBtn")?.addEventListener("click", () => {
+      const studentId = qs("#respondStudent")?.value;
+      if (studentId) openRespondModal(studentId, "");
+    });
     qs("#createSurveyTemplate")?.addEventListener("click", createSurveyTemplate);
     qs("#defaultSurveyTemplate")?.addEventListener("change", (event) => {
       state.ui.defaultSurveyTemplate = event.target.value;
@@ -1391,76 +1397,33 @@
         showToast("異常を確認済みにしました。");
         return;
       }
-      const commentVoiceButton = event.target.closest("[data-comment-voice]");
-      if (commentVoiceButton) {
-        const studentId = commentVoiceButton.dataset.commentVoice;
-        addAction({
-          role: "staff",
-          action_type: "声かけ予定",
-          target_type: "student",
-          target_id: studentId,
-          before_value: "未対応",
-          after_value: "対応予定",
-          reason: "アンケート相談希望",
-        });
-        saveState();
-        renderStaff();
-        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
-        showToast("声かけ対象に追加しました。");
+      const respondButton = event.target.closest("[data-respond]");
+      if (respondButton) {
+        const [studentId, reason] = respondButton.dataset.respond.split("|");
+        openRespondModal(studentId, reason || "");
         return;
       }
-      const shortageButton = event.target.closest("[data-shortage-voice]");
-      if (shortageButton) {
-        const [studentId, reason] = shortageButton.dataset.shortageVoice.split("|");
-        addAction({
-          role: "staff",
-          action_type: "声かけ予定",
-          target_type: "student",
-          target_id: studentId,
-          before_value: "未対応",
-          after_value: "対応予定",
-          reason,
-        });
-        markVoiceStatus(studentId, reason.replace("コマ数不足", ""), "対応予定");
-        saveState();
-        renderStaff();
-        showToast("声かけ対象に追加しました。");
+      const followupAdd = event.target.closest("[data-followup-add]");
+      if (followupAdd) {
+        addFollowupFromModal();
         return;
       }
-      const shortageComplete = event.target.closest("[data-shortage-complete]");
-      if (shortageComplete) {
-        const [studentId, subject] = shortageComplete.dataset.shortageComplete.split("|");
-        markVoiceStatus(studentId, subject, "対応済み");
-        saveState();
-        renderStaff();
-        showToast("声かけを対応済みにしました。");
+      const recordButton = event.target.closest("[data-followup-record]");
+      if (recordButton) {
+        openRecordModal(recordButton.dataset.followupRecord);
         return;
       }
-      const shortageRemove = event.target.closest("[data-shortage-remove]");
-      if (shortageRemove) {
-        const [studentId, scope] = shortageRemove.dataset.shortageRemove.split("|");
-        removeVoiceByScope(studentId, scope);
-        saveState();
-        renderStaff();
-        showToast("声かけ対象から外しました。");
+      const recordSave = event.target.closest("[data-record-save]");
+      if (recordSave) {
+        saveRecordFromModal(recordSave.dataset.recordSave);
         return;
       }
-      const voiceComplete = event.target.closest("[data-voice-complete]");
-      if (voiceComplete) {
-        completeVoiceById(voiceComplete.dataset.voiceComplete);
+      const removePlan = event.target.closest("[data-followup-removeplan]");
+      if (removePlan) {
+        removeFollowupPlan(removePlan.dataset.followupRemoveplan);
         saveState();
         renderStaff();
-        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
-        showToast("声かけを対応済みにしました。");
-        return;
-      }
-      const voiceRemove = event.target.closest("[data-voice-remove]");
-      if (voiceRemove) {
-        removeVoiceById(voiceRemove.dataset.voiceRemove);
-        saveState();
-        renderStaff();
-        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
-        showToast("声かけ対象から外しました。");
+        showToast("リストから外しました。");
         return;
       }
       const revertButton = event.target.closest("[data-revert-action]");
@@ -1479,14 +1442,9 @@
         showToast("異常の確認を取り消しました。");
         return;
       }
-      const followupButton = event.target.closest("[data-student-followup]");
-      if (followupButton) {
-        openStudentFollowupModal(followupButton.dataset.studentFollowup);
-        return;
-      }
-      const followupSave = event.target.closest("[data-followup-save]");
-      if (followupSave) {
-        saveFollowupRecord(followupSave.dataset.followupSave);
+      const historyButton = event.target.closest("[data-student-history]");
+      if (historyButton) {
+        openStudentFollowupModal(historyButton.dataset.studentHistory);
         return;
       }
     });
@@ -1781,7 +1739,7 @@
         const student = row.student;
         const summary = studentPeriodSummary(sid);
         const past = pastAttendanceSummary(sid);
-        const voiced = state.actions.some((action) => action.action_type === "声かけ予定" && action.target_id === sid);
+        const voiced = !!activePlanFor(sid);
         const inRoom = row.attendance.checkin_status === "入室済";
         const surveyDone = row.survey?.status === "提出済";
         return `<tr>
@@ -1845,14 +1803,10 @@
           .map((row) => {
             const studentId = row.attendance.student_id;
             const consult = row.survey.consultation === "yes";
-            const voiced = voiceActionFor(studentId, "アンケート");
-            let op;
-            if (!voiced) {
-              op = `<button class="small" type="button" data-comment-voice="${esc(studentId)}">声かけ対象に追加</button>`;
-            } else {
-              const done = voiced.after_value === "対応済み";
-              op = `<span class="chip ${done ? "green" : "amber"}">${esc(voiced.after_value)}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(voiced.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(voiced.action_id)}">外す</button>`;
-            }
+            const plan = activePlanFor(studentId);
+            const op = plan
+              ? `<span class="chip ${plan.after_value === "対応完了" ? "green" : "amber"}">${esc(plan.after_value)}</span> <button class="small" type="button" data-followup-record="${esc(plan.action_id)}">記録</button>`
+              : `<button class="small primary" type="button" data-respond="${esc(studentId)}|アンケート相談希望">対応する</button>`;
             const extra = row.survey.extra ? `<br>追加回答: ${esc(row.survey.extra)}` : "";
             return itemHtml(
               esc(row.student?.display_name || studentId),
@@ -2068,7 +2022,7 @@
         rows
           .map(
             (student) =>
-              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td>${editing ? `<button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
+              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td class="nowrap"><button class="small" type="button" data-student-history="${esc(student.student_id)}">声かけ・面談履歴</button>${editing ? ` <button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
           )
           .join("") || '<tr><td colspan="5">該当する生徒はいません。</td></tr>';
     }
@@ -2742,14 +2696,8 @@
     return state.actions.some((action) => action.action_type === "異常確認" && action.target_id === key && !action.reverted);
   }
 
-  function voiceActionFor(studentId, subject) {
-    return state.actions.find(
-      (action) =>
-        action.action_type === "声かけ予定" &&
-        action.target_id === studentId &&
-        String(action.reason || "").includes(subject) &&
-        !action.reverted
-    );
+  function activePlanFor(studentId) {
+    return state.actions.find((action) => action.action_type === "声かけ予定" && action.target_id === studentId && !action.reverted);
   }
 
   const REVERTIBLE_ACTIONS = new Set([
@@ -2824,84 +2772,131 @@
       ? history
           .map((action) =>
             itemHtml(
-              `${esc(action.action_type)}${action.reverted ? "（取消済）" : ""}`,
-              `${esc(action.reason || action.after_value)} / ${esc(action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`,
-              `<span class="chip ${action.after_value === "対応済み" ? "green" : ""}">${esc(action.after_value || "")}</span>`
+              `${esc(action.kind || action.action_type)}${action.reverted ? "（取消済）" : ""}`,
+              `${esc(action.reason || "")}${action.content ? ` / ${esc(action.content)}` : ""} / ${esc(action.date || action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`,
+              `<span class="chip ${action.after_value === "対応完了" ? "green" : "amber"}">${esc(action.after_value || "")}</span>`
             )
           )
           .join("")
       : '<div class="notice">この生徒の声かけ・面談履歴はありません。</div>';
-    const assignees = state.staffMaster.map((member) => `<option value="${esc(member.name)}">${esc(member.name)}（${esc(member.venue)}）</option>`).join("");
     openModal(
       "声かけ・面談履歴 / " + student.display_name,
       `
-        <div class="stack" data-followup-student="${esc(studentId)}">
+        <div class="stack">
           ${itemHtml(esc(student.display_name), `${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")}`)}
+          <div class="actions"><button class="small primary" type="button" data-respond="${esc(studentId)}|">対応を追加</button></div>
           <div><h3 class="section-title">履歴</h3><div class="stack" style="margin-top:8px">${histHtml}</div></div>
-          <div>
-            <h3 class="section-title">記録を追加</h3>
-            <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:8px">
-              <label>区分<select id="fuType"><option>面談</option><option>声かけ</option><option>架電</option><option>その他</option></select></label>
-              <label>担当者<select id="fuAssignee">${assignees}</select></label>
-            </div>
-            <label style="margin-top:10px">内容<textarea id="fuContent"></textarea></label>
-            <div class="modal-actions"><button type="button" data-close-modal>閉じる</button><button class="primary" type="button" data-followup-save="${esc(studentId)}">記録を保存</button></div>
+        </div>
+      `
+    );
+  }
+
+  function removeFollowupPlan(actionId) {
+    state.actions = state.actions.filter((item) => item.action_id !== actionId);
+  }
+
+  function openRespondModal(studentId, reason) {
+    const student = studentById(studentId);
+    if (!student) return;
+    const assignees = state.staffMaster.map((member) => `<option value="${esc(member.name)}">${esc(member.name)}（${esc(member.venue)}）</option>`).join("");
+    openModal(
+      "対応を追加 / " + student.display_name,
+      `
+        <div class="stack" data-respond-student="${esc(studentId)}">
+          ${itemHtml(esc(student.display_name), `${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")}`)}
+          <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+            <label>種別<select id="respondKind"><option>声かけ</option><option>面談</option></select></label>
+            <label>担当者<select id="respondAssignee">${assignees}</select></label>
+            <label>実施日<input id="respondDate" value="${esc(APP_DATE)}"></label>
+            <label>理由・メモ<input id="respondReason" value="${esc(reason || "")}"></label>
+          </div>
+          <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" type="button" data-followup-add>声かけ・面談リストに追加</button></div>
+        </div>
+      `
+    );
+  }
+
+  function addFollowupFromModal() {
+    const wrap = qs("[data-respond-student]");
+    if (!wrap) return;
+    const studentId = wrap.dataset.respondStudent;
+    const kind = qs("#respondKind")?.value || "声かけ";
+    const assignee = qs("#respondAssignee")?.value || "";
+    const date = qs("#respondDate")?.value.trim() || APP_DATE;
+    const reason = qs("#respondReason")?.value.trim() || "";
+    addAction({ role: "staff", action_type: "声かけ予定", target_type: "student", target_id: studentId, kind, assignee, date, before_value: "未対応", after_value: "対応予定", reason });
+    saveState();
+    closeModalWindow();
+    renderStaff();
+    showToast(`${kind}（${date}${date === APP_DATE ? "・本日" : ""}）のリストに追加しました。`);
+  }
+
+  function openRecordModal(actionId) {
+    const action = state.actions.find((item) => item.action_id === actionId);
+    if (!action) return;
+    const student = studentById(action.target_id);
+    openModal(
+      "対応記録 / " + (student?.display_name || action.target_id),
+      `
+        <div class="stack" data-record-action="${esc(actionId)}">
+          ${itemHtml(esc(student?.display_name || action.target_id), `${esc(action.kind || "声かけ")} / 担当 ${esc(action.assignee || "-")} / ${esc(action.date || "")}${action.reason ? ` / ${esc(action.reason)}` : ""}`, `<span class="chip ${action.after_value === "対応完了" ? "green" : "amber"}">${esc(action.after_value || "対応予定")}</span>`)}
+          <label>面談・対応内容<textarea id="recordContent">${esc(action.content || "")}</textarea></label>
+          <div class="modal-actions">
+            <button type="button" data-close-modal>キャンセル</button>
+            <button type="button" data-record-save="keep">保存（未完了）</button>
+            <button class="primary" type="button" data-record-save="complete">対応完了</button>
           </div>
         </div>
       `
     );
   }
 
-  function saveFollowupRecord(studentId) {
-    const type = qs("#fuType")?.value || "面談";
-    const assignee = qs("#fuAssignee")?.value || "";
-    const content = qs("#fuContent")?.value.trim();
-    if (!content) {
-      showToast("内容を入力してください。");
+  function saveRecordFromModal(mode) {
+    const wrap = qs("[data-record-action]");
+    if (!wrap) return;
+    const action = state.actions.find((item) => item.action_id === wrap.dataset.recordAction);
+    if (!action) return;
+    action.content = qs("#recordContent")?.value.trim() || action.content || "";
+    if (mode === "complete") action.after_value = "対応完了";
+    action.created_at = nowStamp();
+    saveState();
+    closeModalWindow();
+    renderStaff();
+    showToast(mode === "complete" ? "対応完了として記録しました。" : "記録を保存しました。");
+  }
+
+  function renderFollowupList() {
+    const list = qs("#followupList");
+    if (!list) return;
+    const plans = state.actions.filter((action) => action.action_type === "声かけ予定" && !action.reverted);
+    if (!plans.length) {
+      list.innerHTML = '<div class="notice">声かけ・面談リストは空です。基準未達やアンケートの「対応する」、または上の生徒選択から追加できます。</div>';
       return;
     }
-    addAction({ role: "staff", action_type: "面談記録", target_type: "student", target_id: studentId, after_value: type, reason: content, assignee });
-    saveState();
-    renderStaff();
-    openStudentFollowupModal(studentId);
-    showToast("声かけ・面談記録を保存しました。");
-  }
-
-  function removeVoiceByScope(studentId, scope) {
-    const action = voiceActionFor(studentId, scope);
-    if (action) state.actions = state.actions.filter((item) => item !== action);
-  }
-
-  function removeVoiceById(actionId) {
-    state.actions = state.actions.filter((item) => item.action_id !== actionId);
-  }
-
-  function completeVoiceById(actionId) {
-    const action = state.actions.find((item) => item.action_id === actionId);
-    if (action) {
-      action.after_value = "対応済み";
-      action.created_at = nowStamp();
-    }
-  }
-
-  function markVoiceStatus(studentId, subject, status) {
-    const existing = voiceActionFor(studentId, subject);
-    if (existing) {
-      existing.after_value = status;
-      existing.created_at = nowStamp();
-      return existing;
-    }
-    const action = {
-      role: "staff",
-      action_type: "声かけ予定",
-      target_type: "student",
-      target_id: studentId,
-      before_value: "未対応",
-      after_value: status,
-      reason: subject.endsWith("コマ数") ? `${subject}不足` : `${subject}コマ数不足`,
-    };
-    addAction(action);
-    return state.actions[0];
+    const byDate = {};
+    plans.forEach((plan) => {
+      const d = plan.date || "日付未設定";
+      (byDate[d] ||= []).push(plan);
+    });
+    list.innerHTML = Object.keys(byDate)
+      .sort()
+      .map((date) => {
+        const label = date === APP_DATE ? `${date}（本日）` : date;
+        const rows = byDate[date]
+          .map((plan) => {
+            const done = plan.after_value === "対応完了";
+            const chip = `<span class="chip ${done ? "green" : "amber"}">${esc(plan.after_value || "対応予定")}</span>`;
+            const ops = `<button class="small" type="button" data-followup-record="${esc(plan.action_id)}">記録</button> <button class="small" type="button" data-followup-removeplan="${esc(plan.action_id)}">リストから外す</button>`;
+            return itemHtml(
+              `${esc(studentName(plan.target_id))} <span class="chip blue">${esc(plan.kind || "声かけ")}</span>`,
+              `${esc(plan.reason || "")}${plan.assignee ? ` / 担当 ${esc(plan.assignee)}` : ""}${plan.content ? `<br>記録: ${esc(plan.content)}` : ""}`,
+              `${chip} ${ops}`
+            );
+          })
+          .join("");
+        return `<div class="day-group"><div class="day-head">${esc(label)}（${byDate[date].length}件）</div><div class="stack" style="margin-top:8px">${rows}</div></div>`;
+      })
+      .join("");
   }
 
   function renderStaffRisk() {
@@ -2925,33 +2920,17 @@
     const shortages = computeShortages();
     qs("#shortageRows").innerHTML = shortages
       .map((row) => {
-        const action = voiceActionFor(row.student_id, row.scope);
-        const status = action?.after_value || "未対応";
-        const assignee = action?.assignee ? ` / 担当 ${esc(action.assignee)}` : "";
-        const remove = `<button class="small" type="button" data-shortage-remove="${esc(row.student_id)}|${esc(row.scope)}">対象から外す</button>`;
-        const history = `<button class="small" type="button" data-student-followup="${esc(row.student_id)}">履歴</button>`;
-        const op =
-          status === "対応済み"
-            ? `<span class="chip green">対応済み</span> ${remove} ${history}`
-            : status === "対応予定"
-              ? `<button class="small" type="button" data-shortage-complete="${esc(row.student_id)}|${esc(row.scope)}">対応済みにする</button> ${remove} ${history}`
-              : `<button class="small" type="button" data-shortage-voice="${esc(row.student_id)}|${esc(row.scope)}コマ数不足">声かけ</button> ${history}`;
-        return `<tr><td>${esc(studentName(row.student_id))}</td><td>${esc(row.scope)}</td><td>${row.actual}/${row.threshold} 不足${row.shortage}<br><span class="chip ${status === "対応済み" ? "green" : status === "対応予定" ? "amber" : ""}">${esc(status)}</span>${assignee}</td><td>${op}</td></tr>`;
+        const plan = activePlanFor(row.student_id);
+        const planChip = plan ? ` <span class="chip ${plan.after_value === "対応完了" ? "green" : "amber"}">${esc(plan.after_value)}</span>` : "";
+        const op = `<button class="small primary" type="button" data-respond="${esc(row.student_id)}|${esc(row.scope)} 基準未達">対応する</button>`;
+        return `<tr><td>${esc(studentName(row.student_id))}</td><td>${esc(row.scope)}</td><td>${row.actual}/${row.threshold} 不足${row.shortage}${planChip}</td><td>${op}</td></tr>`;
       })
       .join("") || '<tr><td colspan="4">基準未達はありません。</td></tr>';
-    qs("#voiceStudent").innerHTML = state.students.map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)}</option>`).join("");
-    const assigneeSelect = qs("#voiceAssignee");
-    if (assigneeSelect) {
-      assigneeSelect.innerHTML = state.staffMaster.map((member) => `<option value="${esc(member.name)}">${esc(member.name)}（${esc(member.venue)}）</option>`).join("") || `<option value="">担当者なし</option>`;
+    const respondSelect = qs("#respondStudent");
+    if (respondSelect) {
+      respondSelect.innerHTML = state.students.map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)}（${esc(student.grade)}）</option>`).join("");
     }
-    qs("#voiceRows").innerHTML = state.actions
-      .filter((action) => action.action_type.includes("声かけ"))
-      .map((action) => {
-        const done = action.after_value === "対応済み";
-        const ops = `<span class="chip ${done ? "green" : "amber"}">${esc(action.after_value || "声かけ")}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(action.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(action.action_id)}">外す</button> <button class="small" type="button" data-student-followup="${esc(action.target_id)}">履歴</button>`;
-        return itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`, ops);
-      })
-      .join("") || '<div class="notice">声かけ予定はありません。</div>';
+    renderFollowupList();
     qs("#operationLogRows").innerHTML = state.actions
       .slice(0, 20)
       .map((action) => {
@@ -2987,19 +2966,6 @@
       }
     });
     return rows;
-  }
-
-  function staffAddVoiceAction() {
-    const studentId = qs("#voiceStudent").value;
-    const reason = qs("#voiceReason").value.trim();
-    const assignee = qs("#voiceAssignee")?.value || "";
-    const scope = "受講コマ";
-    const action = markVoiceStatus(studentId, scope, "対応予定");
-    action.reason = reason;
-    action.assignee = assignee;
-    saveState();
-    renderStaff();
-    showToast("声かけ予定を追加しました。");
   }
 
   function renderStaffExport() {
