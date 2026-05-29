@@ -68,20 +68,13 @@
               <div class="panel-body">
                 <button class="small" type="button" data-tab-target="student-home" style="margin-bottom:10px">← 講座一覧へ戻る</button>
                 <label>対象講座<select id="studentAttendanceCourseSelect"></select></label>
-                <div class="segmented" style="margin:12px 0">
-                  <button class="choice selected" type="button" data-attendance-mode="read">QRを読み取る</button>
-                  <button class="choice" type="button" data-attendance-mode="present">QRを提示する</button>
-                </div>
+                <div class="notice" style="margin:12px 0">教室入口の固定QRを、自分のスマホのカメラで読み取って入室します。読み取り後の出席完了画面を、入口でスタッフが目視確認します。</div>
                 <div id="studentQrReadPane">
                   <div id="studentQrReadCourse" class="notice"></div>
                   <div class="qr-box" style="margin-top:10px"><div class="qr-mark" aria-hidden="true"></div></div>
-                  <button class="primary" id="studentScanButton" type="button" style="width:100%; margin-top:10px">教室QRで入室登録</button>
+                  <button class="primary" id="studentScanButton" type="button" style="width:100%; margin-top:10px">教室QRを読み取って入室</button>
                 </div>
-                <div id="studentQrPresentPane" class="is-hidden">
-                  <div class="qr-box"><div class="qr-mark" id="studentPresentQr" aria-hidden="true"></div></div>
-                  <p class="meta" id="studentPresentMeta" style="margin-top:8px"></p>
-                  <button id="studentQrRefresh" type="button" style="width:100%; margin-top:10px">QRを更新</button>
-                </div>
+                <div id="studentCheckinComplete" class="is-hidden"></div>
                 <div id="studentCheckinStatus" class="notice amber" style="margin-top:10px"></div>
               </div>
             </div>
@@ -146,7 +139,7 @@
               <div class="panel-head"><h2>初期設定</h2></div>
               <div class="panel-body">
                 <div class="form-grid" style="grid-template-columns:1fr">
-                  <label>生徒番号<input id="studentNumber" value="12345678"></label>
+                  <label>生徒番号 または メールアドレス（仮ID）<input id="studentNumber" value="12345678"></label>
                   <label>パスワード<input id="studentPassword" type="password" value="abcdefgh"></label>
                 </div>
                 <button class="primary" id="studentLoginButton" type="button" style="width:100%; margin-top:10px">登録内容を確認</button>

@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "tokushin_v2_state";
-  const STATE_SCHEMA = 7;
+  const STATE_SCHEMA = 9;
   const APP_DATE = "2026-05-28";
   const CSV_FILES = {
     students: "students_v2.csv",
@@ -22,7 +22,6 @@
 
   let state = null;
   let latestExport = { filename: "export_v2.csv", csv: "" };
-  let tabletLastResult = "";
   let toastTimer = null;
 
   const qs = (selector, root = document) => root.querySelector(selector);
@@ -159,6 +158,10 @@
 
   function studentNumber(student) {
     return student?.student_number || student?.login_id || student?.student_id || "";
+  }
+
+  function hasStudentNumber(student) {
+    return Boolean(student?.student_number);
   }
 
   function courseById(courseId) {
@@ -376,14 +379,6 @@
     state.ui.riskView ||= "all";
     state.ui.defaultSurveyTemplate ||= "TPL-STD";
     state.ui.readNotices ||= [];
-    state.selected.tabletVenue ||= "A校";
-    const firstTabletCourse = sortCourses(
-      state.courses.filter((course) => course.venue === state.selected.tabletVenue && course.date === APP_DATE)
-    )[0];
-    if (!Object.prototype.hasOwnProperty.call(state.selected, "tabletCourseId")) {
-      state.selected.tabletCourseId = firstTabletCourse?.course_id || "";
-    }
-    state.selected.tabletStudentId ||= "";
   }
 
   function showToast(message) {
@@ -641,8 +636,8 @@
     } else if (app === "teacher-v2") {
       const courseIds = state.courses.filter((course) => course.teacher_id === state.selected.teacherId).map((course) => course.course_id);
       changes = changes.filter((change) => courseIds.includes(change.course_id));
-    } else if (app === "staff-v2" || app === "tablet-v2") {
-      const venue = state.selected.staffVenue || state.selected.tabletVenue;
+    } else if (app === "staff-v2") {
+      const venue = state.selected.staffVenue;
       changes = changes.filter((change) => {
         const course = courseById(change.course_id);
         return course && course.venue === venue;
@@ -689,7 +684,6 @@
     if (app === "student-v2") renderStudent();
     if (app === "staff-v2") renderStaff();
     if (app === "teacher-v2") renderTeacher();
-    if (app === "tablet-v2") renderTablet();
   }
 
   function renderHub() {
@@ -806,19 +800,6 @@
       showToast("入室登録しました。");
     });
 
-    qs("#studentQrRefresh")?.addEventListener("click", () => {
-      showToast("提示QRを更新しました。");
-      renderStudentAttendance();
-    });
-
-    qsa("[data-attendance-mode]").forEach((button) => {
-      button.addEventListener("click", () => {
-        state.ui.attendanceMode = button.dataset.attendanceMode;
-        saveState();
-        renderStudentAttendance();
-      });
-    });
-
     qs('[data-tab-target="student-notices"]')?.addEventListener("click", () => {
       markStudentNoticesRead();
     });
@@ -877,7 +858,8 @@
     qs("#studentProfileMini").textContent = `${student.display_name} / ${student.grade} / ${student.venue}`;
     const profile = qs("#studentProfile");
     if (profile) {
-      profile.innerHTML = `生徒番号 ${esc(studentNumber(student))} / ${esc(student.display_name)} / ${esc(student.grade)} / ${esc(student.venue)} / LINE ${esc(student.line_status)}`;
+      const idLabel = hasStudentNumber(student) ? `生徒番号 ${esc(student.student_number)}` : `仮ID(メール) ${esc(student.login_id || "-")}`;
+      profile.innerHTML = `${idLabel} / ${esc(student.display_name)} / ${esc(student.grade)} / ${esc(student.venue)}`;
     }
     const numberInput = qs("#studentNumber");
     if (numberInput) numberInput.value = studentNumber(student);
@@ -958,13 +940,29 @@
     }
     const course = courseById(state.selected.attendanceCourseId);
     const attendance = attendanceFor(state.selected.studentId, state.selected.attendanceCourseId);
-    qsa("[data-attendance-mode]").forEach((button) => button.classList.toggle("selected", button.dataset.attendanceMode === state.ui.attendanceMode));
-    qs("#studentQrReadPane")?.classList.toggle("is-hidden", state.ui.attendanceMode !== "read");
-    qs("#studentQrPresentPane")?.classList.toggle("is-hidden", state.ui.attendanceMode !== "present");
+    const student = studentById(state.selected.studentId);
     if (course) {
       qs("#studentQrReadCourse").innerHTML = `${esc(courseLabel(course))}<br>${courseStatusChip(course)}`;
-      qs("#studentPresentMeta").textContent = `${studentName(state.selected.studentId)} / ${courseShort(course)} / 有効期限 2分`;
       qs("#studentCheckinStatus").innerHTML = `出席状態: <strong>${esc(attendance?.checkin_status || "未入室")}</strong> / 打刻: ${esc(attendance?.checkin_time || "-")} / 方法: ${esc(attendance?.method || "-")}`;
+    }
+    const complete = qs("#studentCheckinComplete");
+    if (complete) {
+      if (course && attendance?.checkin_status === "入室済") {
+        complete.classList.remove("is-hidden");
+        complete.innerHTML = `
+          <div class="panel" style="margin-top:10px"><div class="panel-body">
+            <h3 class="section-title" style="margin:0 0 8px">出席完了</h3>
+            <p style="margin:2px 0">日付：<strong>${esc(course.date)}</strong></p>
+            <p style="margin:2px 0">時間：<strong>${esc(course.start_time)}–${esc(course.end_time)}</strong></p>
+            <p style="margin:2px 0">講座：<strong>${esc(course.course_name)}</strong></p>
+            <p style="margin:2px 0">氏名：<strong>${esc(student?.display_name || "")}</strong></p>
+            <p style="margin:2px 0">高校：<strong>${esc(student?.school || "")}</strong></p>
+            <p class="meta" style="margin-top:6px">この出席完了画面を、入口でスタッフにご提示ください。</p>
+          </div></div>`;
+      } else {
+        complete.classList.add("is-hidden");
+        complete.innerHTML = "";
+      }
     }
   }
 
@@ -1159,44 +1157,30 @@
 
   function renderStudentLog() {
     const studentId = state.selected.studentId;
-    const student = studentById(studentId);
     const courses = studentCourses(studentId);
-    const threshold = student ? thresholdForGrade(student.grade) : null;
-    const term = threshold?.term || "第3期";
-    const target = threshold ? numberValue(threshold.threshold_periods) : 0;
-    const termCourses = courses.filter((course) => course.term === term);
-    const attendedTerm = termCourses.reduce((sum, course) => sum + (attendanceFor(studentId, course.course_id)?.checkin_status === "入室済" ? numberValue(course.period_count) : 0), 0);
-    const pct = target ? Math.round((attendedTerm / target) * 100) : 0;
+    const attendedTotal = courses.reduce((sum, course) => sum + (attendanceFor(studentId, course.course_id)?.checkin_status === "入室済" ? numberValue(course.period_count) : 0), 0);
     const summary = qs("#studentPeriodSummary");
     if (summary) {
       summary.innerHTML = `
         <div class="metric-grid">
-          ${metric(`受講コマ（${term}）`, attendedTerm)}
-          ${metric("目標コマ", target || "-")}
-          ${metric("達成率", `${pct}%`)}
+          ${metric("受講した総コマ数", `${attendedTotal} コマ`)}
         </div>
-        <div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, pct)}%"></span></div>
-        <p class="meta" style="margin-top:6px">${term}の受講済みコマ数です。目標は校舎で設定された受講コマ達成基準です。</p>
+        <p class="meta" style="margin-top:6px">これまでに出席が確定した受講コマ数の累計です（実績のカウントアップ表示）。</p>
       `;
     }
     const bySubject = {};
     courses.forEach((course) => {
-      bySubject[course.subject] ||= { planned: 0, attended: 0 };
-      bySubject[course.subject].planned += numberValue(course.period_count);
       const attendance = attendanceFor(studentId, course.course_id);
-      if (attendance?.checkin_status === "入室済") bySubject[course.subject].attended += numberValue(course.period_count);
+      if (attendance?.checkin_status === "入室済") {
+        bySubject[course.subject] = (bySubject[course.subject] || 0) + numberValue(course.period_count);
+      }
     });
-    qs("#studentSubjectBars").innerHTML = Object.entries(bySubject)
-      .map(([subject, counts]) => {
-        const subjectPct = counts.planned ? Math.round((counts.attended / counts.planned) * 100) : 0;
-        return itemHtml(
-          esc(subject),
-          `受講済み ${counts.attended} / 予定 ${counts.planned} コマ`,
-          `<span class="chip blue">${subjectPct}%</span>`,
-          `<div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, subjectPct)}%"></span></div>`
-        );
-      })
-      .join("");
+    const subjectEntries = Object.entries(bySubject);
+    qs("#studentSubjectBars").innerHTML = subjectEntries.length
+      ? subjectEntries
+          .map(([subject, count]) => itemHtml(esc(subject), `受講済み ${count} コマ`, `<span class="chip blue">${count} コマ</span>`))
+          .join("")
+      : '<div class="notice">受講済みのコマはまだありません。</div>';
     qs("#studentHistoryRows").innerHTML = sortCourses(courses)
       .map((course) => {
         const attendance = attendanceFor(studentId, course.course_id);
@@ -1478,6 +1462,16 @@
       const historyButton = event.target.closest("[data-student-history]");
       if (historyButton) {
         openStudentFollowupModal(historyButton.dataset.studentHistory);
+        return;
+      }
+      const mergeButton = event.target.closest("[data-merge-id]");
+      if (mergeButton) {
+        openStudentMergeModal(mergeButton.dataset.mergeId);
+        return;
+      }
+      const mergeSave = event.target.closest("[data-merge-save]");
+      if (mergeSave) {
+        saveStudentMerge(mergeSave.dataset.mergeSave);
         return;
       }
     });
@@ -2054,11 +2048,44 @@
       body.innerHTML =
         rows
           .map(
-            (student) =>
-              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td class="nowrap"><button class="small" type="button" data-student-history="${esc(student.student_id)}">カルテ</button>${editing ? ` <button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
+            (student) => {
+              const idChip = hasStudentNumber(student) ? '<span class="chip">正規</span>' : '<span class="chip amber">仮ID</span>';
+              const mergeBtn = hasStudentNumber(student) ? "" : ` <button class="small" type="button" data-merge-id="${esc(student.student_id)}">名寄せ</button>`;
+              return `<tr><td>${esc(student.display_name)} ${idChip}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td class="nowrap"><button class="small" type="button" data-student-history="${esc(student.student_id)}">カルテ</button>${mergeBtn}${editing ? ` <button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`;
+            }
           )
           .join("") || '<tr><td colspan="5">該当する生徒はいません。</td></tr>';
     }
+  }
+
+  function openStudentMergeModal(studentId) {
+    const student = studentById(studentId);
+    if (!student) return;
+    openModal("名寄せ（生徒番号の付与）", `
+      <div class="notice">公開授業などで生徒番号を持たない生徒（仮ID＝メールアドレス）に、正式な生徒番号を手動で付与して名寄せします。システム側の自動名寄せは行わず、管理画面での修正で運用します。</div>
+      <div class="item" style="margin-top:10px"><div class="item-title"><strong>${esc(student.display_name)}</strong><span class="chip amber">仮ID</span></div><p class="meta">現在の仮ID（メール）：${esc(student.login_id || "-")} / 内部管理番号：${esc(student.student_id)}</p></div>
+      <div class="form-grid" style="grid-template-columns:1fr; margin-top:10px">
+        <label>付与する生徒番号<input id="mergeStudentNumber" placeholder="例：12345690" inputmode="numeric"></label>
+      </div>
+      <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" type="button" data-merge-save="${esc(studentId)}">名寄せして確定</button></div>
+    `);
+  }
+
+  function saveStudentMerge(studentId) {
+    const student = studentById(studentId);
+    const value = qs("#mergeStudentNumber")?.value.trim();
+    if (!student || !value) {
+      showToast("生徒番号を入力してください。");
+      return;
+    }
+    const before = `仮ID(${student.login_id || "-"})`;
+    student.student_number = value;
+    student.login_id = value;
+    addAction({ role: "staff", action_type: "名寄せ(生徒番号付与)", target_type: "student", target_id: studentId, before_value: before, after_value: `生徒番号 ${value}`, reason: "管理画面で手動名寄せ" });
+    saveState();
+    closeModalWindow();
+    renderStaff();
+    showToast("生徒番号を付与し、名寄せしました。");
   }
 
   function renderMasterCourses() {
@@ -2251,7 +2278,7 @@
           <div class="form-grid">
             <label>申込日<input id="modalAppDate" value="${esc(app.applied_at)}"></label>
             <label>状態<select id="modalAppStatus">${["申込済", "仮申込", "キャンセル"].map((status) => `<option ${status === app.status ? "selected" : ""}>${esc(status)}</option>`).join("")}</select></label>
-            <label>経路<select id="modalAppSource">${["窓口", "Web", "電話", "Access"].map((source) => `<option ${source === app.source ? "selected" : ""}>${esc(source)}</option>`).join("")}</select></label>
+            <label>経路<select id="modalAppSource">${["A", "B", "C", "D"].map((source) => `<option ${source === app.source ? "selected" : ""}>${esc(source)}</option>`).join("")}</select></label>
           </div>
           <div class="modal-actions"><button type="button" data-close-modal>キャンセル</button><button class="primary" id="modalSaveApplication" type="button">保存</button></div>
         </div>
@@ -2697,32 +2724,65 @@
     ].join("");
   }
 
+  // 異常パターンは3種に集約する:
+  //  1) イン・アウトの片方漏れ（アウト＝アンケート提出。未提出＝退室なし）
+  //  2) 物理的に重複する時間帯での出席
+  //  3) 申し込んでいない講座への打刻（対象講座なしを含む）
   function detectAnomalies() {
     const anomalies = [];
-    state.attendance
-      .filter((record) => record.checkin_status === "入室済")
-      .forEach((record) => {
-        const course = courseById(record.course_id);
-        if (!course) {
-          anomalies.push({ key: `missing-course:${record.attendance_id}`, type: "存在しない講座ID", detail: `${record.course_id} / ${studentName(record.student_id)}`, severity: "高" });
-          return;
-        }
-        if (!isEnrolled(record.student_id, record.course_id)) {
-          anomalies.push({ key: `unregistered:${record.student_id}:${record.course_id}`, type: "未申込講座打刻", detail: `${studentName(record.student_id)} / ${courseShort(course)}`, severity: "高" });
-        }
-        if (course.status === "cancelled") {
-          anomalies.push({ key: `cancelled:${record.student_id}:${record.course_id}`, type: "休講講座への打刻", detail: `${studentName(record.student_id)} / ${courseShort(course)}`, severity: "高" });
-        }
-        if (record.method === "代理" && !record.exception_note && !record.corrected_reason) {
-          anomalies.push({ key: `proxy-no-reason:${record.attendance_id}`, type: "代理理由未記録", detail: `${studentName(record.student_id)} / ${courseShort(course)}`, severity: "中" });
-        }
-        if (record.checkin_time) {
-          const check = minutes(record.checkin_time);
-          if (check < minutes(course.start_time) - 60 || check > minutes(course.end_time)) {
-            anomalies.push({ key: `outside-time:${record.attendance_id}`, type: "時間外打刻", detail: `${studentName(record.student_id)} / ${record.checkin_time}`, severity: "中" });
-          }
+    const entered = state.attendance.filter((record) => record.checkin_status === "入室済");
+
+    // 3) 未申込講座への打刻
+    entered.forEach((record) => {
+      const course = courseById(record.course_id);
+      if (!course) {
+        anomalies.push({ key: `unapplied:${record.attendance_id}`, type: "未申込講座への打刻", detail: `${record.course_id} / ${studentName(record.student_id)}（対象講座なし）`, severity: "高" });
+        return;
+      }
+      if (!isEnrolled(record.student_id, record.course_id)) {
+        anomalies.push({ key: `unapplied:${record.student_id}:${record.course_id}`, type: "未申込講座への打刻", detail: `${studentName(record.student_id)} / ${courseShort(course)}`, severity: "高" });
+      }
+    });
+
+    // 1) イン・アウトの片方漏れ：入室あり・アンケート(退室)未提出
+    entered.forEach((record) => {
+      const course = courseById(record.course_id);
+      if (!course || course.survey_required !== "yes" || course.date > APP_DATE) return;
+      const response = surveyFor(record.student_id, record.course_id);
+      if (response?.status !== "提出済" && record.survey_status !== "提出済") {
+        anomalies.push({ key: `half-out:${record.student_id}:${record.course_id}`, type: "イン・アウトの片方漏れ", detail: `${studentName(record.student_id)} / ${courseShort(course)}（入室あり・アンケート(退室)未提出）`, severity: "中" });
+      }
+    });
+    // 1) 逆方向：アンケート提出(アウト)あり・入室(イン)なし
+    state.surveys
+      .filter((survey) => survey.status === "提出済")
+      .forEach((survey) => {
+        const record = attendanceFor(survey.student_id, survey.course_id);
+        if (record?.checkin_status !== "入室済") {
+          const course = courseById(survey.course_id);
+          anomalies.push({ key: `half-in:${survey.student_id}:${survey.course_id}`, type: "イン・アウトの片方漏れ", detail: `${studentName(survey.student_id)} / ${courseShort(course) || survey.course_id}（アンケート(退室)あり・入室なし）`, severity: "中" });
         }
       });
+
+    // 2) 物理的に重複する時間帯での出席
+    const byStudentDay = {};
+    entered.forEach((record) => {
+      const course = courseById(record.course_id);
+      if (!course) return;
+      (byStudentDay[`${record.student_id}@${course.date}`] ||= []).push(course);
+    });
+    Object.entries(byStudentDay).forEach(([key, list]) => {
+      const studentId = key.split("@")[0];
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          const a = list[i];
+          const b = list[j];
+          if (minutes(a.start_time) < minutes(b.end_time) && minutes(b.start_time) < minutes(a.end_time)) {
+            anomalies.push({ key: `overlap:${studentId}:${a.course_id}:${b.course_id}`, type: "時間帯の重複出席", detail: `${studentName(studentId)} / ${courseShort(a)} と ${courseShort(b)}`, severity: "高" });
+          }
+        }
+      }
+    });
 
     return anomalies;
   }
@@ -2739,7 +2799,6 @@
     "異常確認",
     "出席修正",
     "代理入室",
-    "校舎QR入室",
     "入室登録",
     "紙回答入力",
     "アンケート提出",
@@ -2863,8 +2922,8 @@
       "生徒カルテ / " + student.display_name,
       `
         <div class="stack">
-          ${itemHtml(esc(student.display_name), `${esc(studentNumber(student))} / ${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")} / 担当 ${esc(student.advisor || "")}`)}
-          <div class="actions"><button class="small primary" type="button" data-respond="${esc(studentId)}|">対応を追加</button></div>
+          ${itemHtml(`${esc(student.display_name)} ${hasStudentNumber(student) ? '<span class="chip">正規</span>' : '<span class="chip amber">仮ID</span>'}`, `${esc(studentNumber(student))} / ${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")} / 担当 ${esc(student.advisor || "")}`)}
+          <div class="actions"><button class="small primary" type="button" data-respond="${esc(studentId)}|">対応を追加</button>${hasStudentNumber(student) ? "" : ` <button class="small" type="button" data-merge-id="${esc(studentId)}">名寄せ</button>`}</div>
           <div><h3 class="section-title">申込履歴</h3><div style="margin-top:8px">${appHtml}</div></div>
           <div><h3 class="section-title">受講履歴</h3><div style="margin-top:8px">${courseHtml}</div></div>
           <div><h3 class="section-title">模試成績（第1〜4回）</h3><div style="margin-top:8px">${examHtml}</div></div>
@@ -3416,143 +3475,6 @@
     return flags;
   }
 
-  let tabletAuthed = false;
-
-  function bindTabletOnce() {
-    qs("#tabletLoginButton")?.addEventListener("click", () => {
-      const id = qs("#tabletAdminId")?.value.trim();
-      const pw = qs("#tabletAdminPw")?.value.trim();
-      const err = qs("#tabletLoginError");
-      if (id === "admin" && pw === "admin1234") {
-        tabletAuthed = true;
-        if (err) err.classList.add("is-hidden");
-        renderTablet();
-      } else if (err) {
-        err.textContent = "管理者IDまたはパスワードが違います。";
-        err.classList.remove("is-hidden");
-      }
-    });
-    qs("#tabletLogout")?.addEventListener("click", () => {
-      tabletAuthed = false;
-      renderTablet();
-    });
-    qs("#tabletVenueSelect")?.addEventListener("change", (event) => {
-      state.selected.tabletVenue = event.target.value;
-      state.selected.tabletCourseId = "";
-      state.selected.tabletStudentId = "";
-      saveState();
-      renderTablet();
-    });
-    qs("#tabletCourseSelect")?.addEventListener("change", (event) => {
-      state.selected.tabletCourseId = event.target.value;
-      state.selected.tabletStudentId = "";
-      saveState();
-      renderTablet();
-    });
-    qs("#tabletScanStudent")?.addEventListener("change", (event) => {
-      state.selected.tabletStudentId = event.target.value;
-      saveState();
-    });
-    qs("#tabletScanButton")?.addEventListener("click", registerTabletCheckin);
-    window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY) return;
-      const next = loadStoredState();
-      if (next) {
-        state = next;
-        setSelectedDefaults();
-        renderTablet();
-      }
-    });
-  }
-
-  function renderTabletSelectors() {
-    const venues = [...new Set(state.courses.map((course) => course.venue))];
-    const venueSelect = qs("#tabletVenueSelect");
-    if (venueSelect) {
-      venueSelect.innerHTML = venues.map((venue) => `<option>${esc(venue)}</option>`).join("");
-      venueSelect.value = state.selected.tabletVenue;
-    }
-    const venue = state.selected.tabletVenue;
-    const courses = sortCourses(state.courses.filter((course) => course.venue === venue && course.date === APP_DATE));
-    const courseSelect = qs("#tabletCourseSelect");
-    if (courseSelect) {
-      courseSelect.innerHTML = courses
-        .map((course) => `<option value="${esc(course.course_id)}">${esc(courseShort(course))} ${esc(course.start_time)}</option>`)
-        .join("") || `<option value="">本日の講座なし</option>`;
-      if (!courses.some((course) => course.course_id === state.selected.tabletCourseId)) state.selected.tabletCourseId = courses[0]?.course_id || "";
-      courseSelect.value = state.selected.tabletCourseId;
-    }
-    const course = courseById(state.selected.tabletCourseId);
-    const studentSelect = qs("#tabletScanStudent");
-    if (studentSelect) {
-      const students = (course ? courseStudentIds(course.course_id) : []).map((id) => studentById(id)).filter(Boolean);
-      studentSelect.innerHTML = students
-        .map((student) => `<option value="${esc(student.student_id)}">${esc(student.display_name)} / ${esc(student.grade)} / ${esc(studentNumber(student))}</option>`)
-        .join("") || `<option value="">対象生徒なし</option>`;
-      if (!students.some((student) => student.student_id === state.selected.tabletStudentId)) state.selected.tabletStudentId = students[0]?.student_id || "";
-      studentSelect.value = state.selected.tabletStudentId;
-    }
-  }
-
-  function registerTabletCheckin() {
-    const courseId = qs("#tabletCourseSelect")?.value || state.selected.tabletCourseId;
-    const studentId = qs("#tabletScanStudent")?.value || state.selected.tabletStudentId;
-    const course = courseById(courseId);
-    const student = studentById(studentId);
-    if (!course) {
-      showToast("読取対象の講座を選択してください。");
-      return;
-    }
-    if (!student) {
-      tabletLastResult = '<div class="notice red"><strong>エラー</strong>：QRを読み取れませんでした。もう一度かざしてください。</div>';
-      renderTablet();
-      return;
-    }
-    if (!isEnrolled(studentId, courseId) || course.status === "cancelled") {
-      const reason = course.status === "cancelled" ? "この講座は休講です" : "この講座の申込が確認できません";
-      tabletLastResult = `<div class="notice red"><strong>エラー：登録できません</strong><br>${esc(student.display_name)} / ${esc(courseShort(course))}<br>${esc(reason)}。校舎スタッフにお声がけください。</div>`;
-      renderTablet();
-      showToast("エラー：登録できませんでした。");
-      return;
-    }
-    const attendance = attendanceFor(studentId, courseId, true);
-    const before = attendance.checkin_status;
-    if (before === "入室済") {
-      tabletLastResult = `<div class="notice amber"><strong>すでに入室済みです</strong><br>${esc(student.display_name)} / ${esc(courseShort(course))}</div>`;
-      renderTablet();
-      return;
-    }
-    attendance.checkin_status = "入室済";
-    attendance.checkin_time = attendance.checkin_time || (course.start_time > "15:00" ? course.start_time : nowStamp().slice(11));
-    attendance.method = "校舎QR";
-    attendance.confirmed_status = "未確認";
-    addAction({
-      role: "staff",
-      actor: `tablet-${state.selected.tabletVenue || ""}`,
-      action_type: "校舎QR入室",
-      target_type: "attendance",
-      target_id: attendance.attendance_id,
-      before_value: before,
-      after_value: "入室済",
-      reason: "校舎タブレットで生徒提示QRを読取",
-    });
-    tabletLastResult = `<div class="notice green"><strong>登録完了</strong><br>${esc(student.display_name)} さん（${esc(student.grade)}）<br>${esc(courseShort(course))}<br>入室を受け付けました。</div>`;
-    saveState();
-    renderTablet();
-    showToast(`${student.display_name} を入室登録しました。`);
-  }
-
-  function renderTablet() {
-    qs("#tabletLogin")?.classList.toggle("is-hidden", tabletAuthed);
-    qs("#tabletScanner")?.classList.toggle("is-hidden", !tabletAuthed);
-    if (!tabletAuthed) return;
-    renderTabletSelectors();
-    const result = qs("#tabletReadResult");
-    if (result) {
-      result.innerHTML = tabletLastResult || '<div class="notice">講座を選び、生徒の提示QRを読み取ると、登録結果がここに大きく表示されます。</div>';
-    }
-  }
-
   async function init() {
     bindCommonEvents();
     const initial = await buildInitialState();
@@ -3562,7 +3484,6 @@
     if (app === "student-v2") bindStudentOnce();
     if (app === "staff-v2") bindStaffOnce();
     if (app === "teacher-v2") bindTeacherOnce();
-    if (app === "tablet-v2") bindTabletOnce();
     renderApp();
     showStartupNotices();
   }

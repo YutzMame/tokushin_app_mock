@@ -77,7 +77,7 @@
               <label class="setting-toggle"><input id="realtimeShowEntered" type="checkbox" checked>入室済</label>
               <label class="setting-toggle"><input id="realtimeShowNotEntered" type="checkbox" checked>未入室</label>
             </div>
-            <div class="notice" style="margin-top:10px">QR読込・代理・紙回答で入室した生徒を、講座・学年に関係なく新しい順に表示します。生徒提示QRの読取（タブレット）や生徒側登録もリアルタイムに反映します。</div>
+            <div class="notice" style="margin-top:10px">教室QR読取・代理入室・紙回答で入室した生徒を、講座・学年に関係なく新しい順に表示します。当日教室に誰がいるかを即時に把握し、欠席者への声かけ（電話など）に使います。</div>
             <div id="realtimeList" class="stack" style="margin-top:12px"></div>
           </div>
         </section>
@@ -85,9 +85,9 @@
 
       <section class="tab-panel" data-tab-panel="staff-summary">
         <section class="panel">
-          <div class="panel-head"><h2>受講コマ集計（SPS週間受講コマ）</h2></div>
+          <div class="panel-head"><h2>受講コマ集計（週間受講コマ）</h2></div>
           <div class="panel-body">
-            <div class="notice">上部で選択した校舎の生徒について、週ごとの受講済みコマ数・科目別・基準との差分を集計します。SPS（受講・模試成績）連携用の数値です。CSV出力は「データ入出力 &gt; 受講コマCSV」。</div>
+            <div class="notice">上部で選択した校舎の生徒について、週ごとの受講済みコマ数・科目別・基準との差分を集計します。CSV出力は「データ入出力 &gt; 受講コマCSV」。</div>
             <div class="metric-grid" id="summaryMetrics" style="margin-top:12px"></div>
             <div class="table-scroll" style="margin-top:12px"><table class="dense" id="summaryTable"></table></div>
           </div>
@@ -211,7 +211,8 @@
           <section class="panel">
             <div class="panel-head"><h2>CSV出力</h2></div>
             <div class="panel-body">
-              <label>出力種別<select id="exportType"><option value="attendance">出席簿CSV</option><option value="counts">受講コマCSV</option><option value="survey">アンケートCSV</option><option value="pos">POS取込用CSV</option><option value="access">Access取込用CSV</option><option value="actions">操作履歴CSV</option></select></label>
+              <div class="notice">担任・管理画面は当日の状況を即時反映します。成績・進捗を扱う他システムや他校舎への連携は、サーバ負荷・ロック競合を避けるため夜間の日次バッチで連携する想定です（このCSV出力が連携データのイメージ）。打刻ログは除去せず全件連携し、異常は「異常・声かけ」で要確認として目視判断します。</div>
+              <label style="margin-top:10px">出力種別<select id="exportType"><option value="attendance">出席簿CSV</option><option value="counts">受講コマCSV</option><option value="survey">アンケートCSV</option><option value="pos">POS取込用CSV</option><option value="access">Access取込用CSV</option><option value="actions">操作履歴CSV</option></select></label>
               <div class="actions" style="margin-top:10px"><button id="previewExport" type="button">プレビュー</button><button id="downloadExport" class="primary" type="button">ダウンロード</button></div>
               <div id="csvReferenceRows" class="stack" style="margin-top:14px"></div>
             </div>

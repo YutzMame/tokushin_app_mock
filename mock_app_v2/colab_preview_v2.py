@@ -52,17 +52,12 @@ def show_teacher_app_v2() -> None:
     _display("teacher_app_v2.html")
 
 
-def show_tablet_qr_app_v2() -> None:
-    _display("tablet_qr_app_v2.html")
-
-
 _SERVER = None
 
 PAGES = [
     ("生徒用", "/student_app_v2.html"),
     ("校舎スタッフ用", "/staff_app_v2.html"),
     ("講師・教室担当用", "/teacher_app_v2.html"),
-    ("校舎QR読取タブレット", "/tablet_qr_app_v2.html"),
 ]
 
 
@@ -90,7 +85,7 @@ def _start_server(port: int):
 
 
 def serve_links_v2(port: int = 8000):
-    """4画面（生徒用・校舎用・講師用・タブレット）を別ウィンドウで開くリンクを発行。
+    """3画面（生徒用・校舎用・講師用）を別ウィンドウで開くリンクを発行。
 
     実ディレクトリを配信するため data/*.csv を読み込み、機能を実際に操作できる。
     """
