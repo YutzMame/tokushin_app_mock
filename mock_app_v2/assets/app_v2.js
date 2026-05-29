@@ -530,7 +530,7 @@
   }
 
   function materialHandoverDone(studentId, courseId) {
-    return state.actions.some((action) => action.action_type === "配布物受渡" && action.target_id === `${studentId}:${courseId}`);
+    return state.actions.some((action) => action.action_type === "配布物受渡" && action.target_id === `${studentId}:${courseId}` && !action.reverted);
   }
 
   function openMaterialsModal(courseId) {
@@ -1401,6 +1401,33 @@
         renderStaff();
         if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
         showToast("声かけ対象から外しました。");
+        return;
+      }
+      const revertButton = event.target.closest("[data-revert-action]");
+      if (revertButton) {
+        revertAction(revertButton.dataset.revertAction);
+        saveState();
+        renderStaff();
+        showToast("操作を取り消しました。");
+        return;
+      }
+      const anomalyUnconfirm = event.target.closest("[data-anomaly-unconfirm]");
+      if (anomalyUnconfirm) {
+        unconfirmAnomaly(anomalyUnconfirm.dataset.anomalyUnconfirm);
+        saveState();
+        renderStaff();
+        showToast("異常の確認を取り消しました。");
+        return;
+      }
+      const followupButton = event.target.closest("[data-student-followup]");
+      if (followupButton) {
+        openStudentFollowupModal(followupButton.dataset.studentFollowup);
+        return;
+      }
+      const followupSave = event.target.closest("[data-followup-save]");
+      if (followupSave) {
+        saveFollowupRecord(followupSave.dataset.followupSave);
+        return;
       }
     });
 
@@ -2481,7 +2508,7 @@
   }
 
   function isAnomalyConfirmed(key) {
-    return state.actions.some((action) => action.action_type === "異常確認" && action.target_id === key);
+    return state.actions.some((action) => action.action_type === "異常確認" && action.target_id === key && !action.reverted);
   }
 
   function voiceActionFor(studentId, subject) {
@@ -2489,8 +2516,124 @@
       (action) =>
         action.action_type === "声かけ予定" &&
         action.target_id === studentId &&
-        String(action.reason || "").includes(subject)
+        String(action.reason || "").includes(subject) &&
+        !action.reverted
     );
+  }
+
+  const REVERTIBLE_ACTIONS = new Set([
+    "異常確認",
+    "出席修正",
+    "代理入室",
+    "校舎QR入室",
+    "入室登録",
+    "紙回答入力",
+    "アンケート提出",
+    "アンケート一時保存",
+    "声かけ予定",
+    "配布物受渡",
+    "配布物リマインド",
+  ]);
+
+  function isRevertible(action) {
+    return REVERTIBLE_ACTIONS.has(action.action_type) && !action.reverted;
+  }
+
+  function revertAction(actionId) {
+    const action = state.actions.find((item) => item.action_id === actionId);
+    if (!action || action.reverted) return;
+    if (action.target_type === "attendance") {
+      const att = state.attendance.find((item) => item.attendance_id === action.target_id);
+      if (att) {
+        att.checkin_status = action.before_value || "未入室";
+        if (att.checkin_status === "未入室") {
+          att.checkin_time = "";
+          att.method = "未実施";
+          att.exception_note = "";
+        }
+        att.confirmed_status = "未確認";
+      }
+    } else if (action.target_type === "survey") {
+      const sv = state.surveys.find((item) => item.response_id === action.target_id);
+      if (sv) {
+        sv.status = action.before_value || "未提出";
+        if (sv.status !== "提出済") sv.submitted_at = "";
+        const att = state.attendance.find((item) => item.student_id === sv.student_id && item.course_id === sv.course_id);
+        if (att) att.survey_status = sv.status;
+      }
+    }
+    action.reverted = true;
+    addAction({
+      role: "staff",
+      action_type: "操作取消",
+      target_type: action.target_type,
+      target_id: action.target_id,
+      before_value: action.after_value,
+      after_value: action.before_value || "(復元)",
+      reason: `「${action.action_type}」を取消`,
+    });
+  }
+
+  function unconfirmAnomaly(key) {
+    const action = state.actions.find((item) => item.action_type === "異常確認" && item.target_id === key && !item.reverted);
+    if (!action) return;
+    action.reverted = true;
+    addAction({ role: "staff", action_type: "操作取消", target_type: "anomaly", target_id: key, after_value: "未確認", reason: "異常確認を取消" });
+  }
+
+  function studentFollowupHistory(studentId) {
+    return state.actions.filter((action) => action.target_id === studentId && (action.action_type.includes("声かけ") || action.action_type === "面談記録"));
+  }
+
+  function openStudentFollowupModal(studentId) {
+    const student = studentById(studentId);
+    if (!student) return;
+    const history = studentFollowupHistory(studentId);
+    const histHtml = history.length
+      ? history
+          .map((action) =>
+            itemHtml(
+              `${esc(action.action_type)}${action.reverted ? "（取消済）" : ""}`,
+              `${esc(action.reason || action.after_value)} / ${esc(action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`,
+              `<span class="chip ${action.after_value === "対応済み" ? "green" : ""}">${esc(action.after_value || "")}</span>`
+            )
+          )
+          .join("")
+      : '<div class="notice">この生徒の声かけ・面談履歴はありません。</div>';
+    const assignees = state.staffMaster.map((member) => `<option value="${esc(member.name)}">${esc(member.name)}（${esc(member.venue)}）</option>`).join("");
+    openModal(
+      "声かけ・面談履歴 / " + student.display_name,
+      `
+        <div class="stack" data-followup-student="${esc(studentId)}">
+          ${itemHtml(esc(student.display_name), `${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")}`)}
+          <div><h3 class="section-title">履歴</h3><div class="stack" style="margin-top:8px">${histHtml}</div></div>
+          <div>
+            <h3 class="section-title">記録を追加</h3>
+            <div class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:8px">
+              <label>区分<select id="fuType"><option>面談</option><option>声かけ</option><option>架電</option><option>その他</option></select></label>
+              <label>担当者<select id="fuAssignee">${assignees}</select></label>
+            </div>
+            <label style="margin-top:10px">内容<textarea id="fuContent"></textarea></label>
+            <div class="modal-actions"><button type="button" data-close-modal>閉じる</button><button class="primary" type="button" data-followup-save="${esc(studentId)}">記録を保存</button></div>
+          </div>
+        </div>
+      `
+    );
+  }
+
+  function saveFollowupRecord(studentId) {
+    const type = qs("#fuType")?.value || "面談";
+    const assignee = qs("#fuAssignee")?.value || "";
+    const content = qs("#fuContent")?.value.trim();
+    if (!content) {
+      showToast("内容を入力してください。");
+      return;
+    }
+    addAction({ role: "staff", action_type: "面談記録", target_type: "student", target_id: studentId, after_value: type, reason: content, assignee });
+    saveState();
+    renderStaff();
+    openStudentFollowupModal(studentId);
+    showToast("声かけ・面談記録を保存しました。");
   }
 
   function removeVoiceByScope(studentId, scope) {
@@ -2544,7 +2687,7 @@
     qs("#anomalyRows").innerHTML = anomalies
       .map((item) => {
         const confirmed = isAnomalyConfirmed(item.key);
-        return `<tr><td>${esc(item.type)}</td><td>${esc(item.detail)}</td><td><span class="chip ${item.severity === "高" ? "red" : "amber"}">${esc(item.severity)}</span></td><td>${confirmed ? '<span class="chip green">確認済</span>' : `<button class="small" type="button" data-anomaly-confirm="${esc(item.key)}">確認済</button>`}</td></tr>`;
+        return `<tr><td>${esc(item.type)}</td><td>${esc(item.detail)}</td><td><span class="chip ${item.severity === "高" ? "red" : "amber"}">${esc(item.severity)}</span></td><td>${confirmed ? `<span class="chip green">確認済</span> <button class="small" type="button" data-anomaly-unconfirm="${esc(item.key)}">取消</button>` : `<button class="small" type="button" data-anomaly-confirm="${esc(item.key)}">確認済</button>`}</td></tr>`;
       })
       .join("") || '<tr><td colspan="4">異常はありません。</td></tr>';
 
@@ -2555,12 +2698,13 @@
         const status = action?.after_value || "未対応";
         const assignee = action?.assignee ? ` / 担当 ${esc(action.assignee)}` : "";
         const remove = `<button class="small" type="button" data-shortage-remove="${esc(row.student_id)}|${esc(row.scope)}">対象から外す</button>`;
+        const history = `<button class="small" type="button" data-student-followup="${esc(row.student_id)}">履歴</button>`;
         const op =
           status === "対応済み"
-            ? `<span class="chip green">対応済み</span> ${remove}`
+            ? `<span class="chip green">対応済み</span> ${remove} ${history}`
             : status === "対応予定"
-              ? `<button class="small" type="button" data-shortage-complete="${esc(row.student_id)}|${esc(row.scope)}">対応済みにする</button> ${remove}`
-              : `<button class="small" type="button" data-shortage-voice="${esc(row.student_id)}|${esc(row.scope)}コマ数不足">声かけ</button>`;
+              ? `<button class="small" type="button" data-shortage-complete="${esc(row.student_id)}|${esc(row.scope)}">対応済みにする</button> ${remove} ${history}`
+              : `<button class="small" type="button" data-shortage-voice="${esc(row.student_id)}|${esc(row.scope)}コマ数不足">声かけ</button> ${history}`;
         return `<tr><td>${esc(studentName(row.student_id))}</td><td>${esc(row.scope)}</td><td>${row.actual}/${row.threshold} 不足${row.shortage}<br><span class="chip ${status === "対応済み" ? "green" : status === "対応予定" ? "amber" : ""}">${esc(status)}</span>${assignee}</td><td>${op}</td></tr>`;
       })
       .join("") || '<tr><td colspan="4">基準未達はありません。</td></tr>';
@@ -2573,13 +2717,20 @@
       .filter((action) => action.action_type.includes("声かけ"))
       .map((action) => {
         const done = action.after_value === "対応済み";
-        const ops = `<span class="chip ${done ? "green" : "amber"}">${esc(action.after_value || "声かけ")}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(action.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(action.action_id)}">外す</button>`;
+        const ops = `<span class="chip ${done ? "green" : "amber"}">${esc(action.after_value || "声かけ")}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(action.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(action.action_id)}">外す</button> <button class="small" type="button" data-student-followup="${esc(action.target_id)}">履歴</button>`;
         return itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`, ops);
       })
       .join("") || '<div class="notice">声かけ予定はありません。</div>';
     qs("#operationLogRows").innerHTML = state.actions
       .slice(0, 20)
-      .map((action) => `<tr><td>${esc(action.created_at)}</td><td>${esc(action.action_type)}</td><td>${esc(action.target_type)}:${esc(action.target_id)}</td><td>${esc(action.reason)}</td></tr>`)
+      .map((action) => {
+        const op = action.reverted
+          ? '<span class="chip">取消済</span>'
+          : isRevertible(action)
+            ? `<button class="small" type="button" data-revert-action="${esc(action.action_id)}">戻す</button>`
+            : "";
+        return `<tr><td>${esc(action.created_at)}</td><td>${esc(action.action_type)}</td><td>${esc(action.target_type)}:${esc(action.target_id)}</td><td>${esc(action.reason)} ${op}</td></tr>`;
+      })
       .join("");
   }
 
