@@ -1385,11 +1385,21 @@
         showToast("声かけ対象から外しました。");
         return;
       }
+      const voiceComplete = event.target.closest("[data-voice-complete]");
+      if (voiceComplete) {
+        completeVoiceById(voiceComplete.dataset.voiceComplete);
+        saveState();
+        renderStaff();
+        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
+        showToast("声かけを対応済みにしました。");
+        return;
+      }
       const voiceRemove = event.target.closest("[data-voice-remove]");
       if (voiceRemove) {
         removeVoiceById(voiceRemove.dataset.voiceRemove);
         saveState();
         renderStaff();
+        if (surveyModalCourse && qs("#detailModal")?.classList.contains("open")) openSurveyModal(surveyModalCourse);
         showToast("声かけ対象から外しました。");
       }
     });
@@ -1671,9 +1681,13 @@
             const studentId = row.attendance.student_id;
             const consult = row.survey.consultation === "yes";
             const voiced = voiceActionFor(studentId, "アンケート");
-            const op = voiced
-              ? `<span class="chip green">${esc(voiced.after_value)}</span>`
-              : `<button class="small" type="button" data-comment-voice="${esc(studentId)}">声かけ対象に追加</button>`;
+            let op;
+            if (!voiced) {
+              op = `<button class="small" type="button" data-comment-voice="${esc(studentId)}">声かけ対象に追加</button>`;
+            } else {
+              const done = voiced.after_value === "対応済み";
+              op = `<span class="chip ${done ? "green" : "amber"}">${esc(voiced.after_value)}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(voiced.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(voiced.action_id)}">外す</button>`;
+            }
             return itemHtml(
               esc(row.student?.display_name || studentId),
               `${esc(row.survey.comment)}<br>満足度${esc(row.survey.satisfaction)} / 難易度${esc(row.survey.difficulty)} / 理解度${esc(row.survey.understanding)}`,
@@ -2488,6 +2502,14 @@
     state.actions = state.actions.filter((item) => item.action_id !== actionId);
   }
 
+  function completeVoiceById(actionId) {
+    const action = state.actions.find((item) => item.action_id === actionId);
+    if (action) {
+      action.after_value = "対応済み";
+      action.created_at = nowStamp();
+    }
+  }
+
   function markVoiceStatus(studentId, subject, status) {
     const existing = voiceActionFor(studentId, subject);
     if (existing) {
@@ -2549,7 +2571,11 @@
     }
     qs("#voiceRows").innerHTML = state.actions
       .filter((action) => action.action_type.includes("声かけ"))
-      .map((action) => itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)} / ${esc(action.after_value)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`, `<span class="chip amber">${esc(action.after_value || "声かけ")}</span> <button class="small" type="button" data-voice-remove="${esc(action.action_id)}">外す</button>`))
+      .map((action) => {
+        const done = action.after_value === "対応済み";
+        const ops = `<span class="chip ${done ? "green" : "amber"}">${esc(action.after_value || "声かけ")}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(action.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(action.action_id)}">外す</button>`;
+        return itemHtml(esc(studentName(action.target_id)), `${esc(action.reason)} / ${esc(action.created_at)}${action.assignee ? ` / 担当 ${esc(action.assignee)}` : ""}`, ops);
+      })
       .join("") || '<div class="notice">声かけ予定はありません。</div>';
     qs("#operationLogRows").innerHTML = state.actions
       .slice(0, 20)
