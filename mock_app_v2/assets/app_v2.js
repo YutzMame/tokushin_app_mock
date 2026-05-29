@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "tokushin_v2_state";
-  const STATE_SCHEMA = 6;
+  const STATE_SCHEMA = 7;
   const APP_DATE = "2026-05-28";
   const CSV_FILES = {
     students: "students_v2.csv",
@@ -17,6 +17,7 @@
     staffMaster: "staff_master_v2.csv",
     applications: "applications_v2.csv",
     surveyTemplates: "survey_templates_v2.csv",
+    examResults: "exam_results_v2.csv",
   };
 
   let state = null;
@@ -1158,7 +1159,26 @@
 
   function renderStudentLog() {
     const studentId = state.selected.studentId;
+    const student = studentById(studentId);
     const courses = studentCourses(studentId);
+    const threshold = student ? thresholdForGrade(student.grade) : null;
+    const term = threshold?.term || "第3期";
+    const target = threshold ? numberValue(threshold.threshold_periods) : 0;
+    const termCourses = courses.filter((course) => course.term === term);
+    const attendedTerm = termCourses.reduce((sum, course) => sum + (attendanceFor(studentId, course.course_id)?.checkin_status === "入室済" ? numberValue(course.period_count) : 0), 0);
+    const pct = target ? Math.round((attendedTerm / target) * 100) : 0;
+    const summary = qs("#studentPeriodSummary");
+    if (summary) {
+      summary.innerHTML = `
+        <div class="metric-grid">
+          ${metric(`受講コマ（${term}）`, attendedTerm)}
+          ${metric("目標コマ", target || "-")}
+          ${metric("達成率", `${pct}%`)}
+        </div>
+        <div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, pct)}%"></span></div>
+        <p class="meta" style="margin-top:6px">${term}の受講済みコマ数です。目標は校舎で設定された受講コマ達成基準です。</p>
+      `;
+    }
     const bySubject = {};
     courses.forEach((course) => {
       bySubject[course.subject] ||= { planned: 0, attended: 0 };
@@ -1168,22 +1188,35 @@
     });
     qs("#studentSubjectBars").innerHTML = Object.entries(bySubject)
       .map(([subject, counts]) => {
-        const pct = counts.planned ? Math.round((counts.attended / counts.planned) * 100) : 0;
+        const subjectPct = counts.planned ? Math.round((counts.attended / counts.planned) * 100) : 0;
         return itemHtml(
           esc(subject),
           `受講済み ${counts.attended} / 予定 ${counts.planned} コマ`,
-          `<span class="chip blue">${pct}%</span>`,
-          `<div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, pct)}%"></span></div>`
+          `<span class="chip blue">${subjectPct}%</span>`,
+          `<div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, subjectPct)}%"></span></div>`
         );
       })
       .join("");
-    qs("#studentHistoryRows").innerHTML = courses
+    qs("#studentHistoryRows").innerHTML = sortCourses(courses)
       .map((course) => {
         const attendance = attendanceFor(studentId, course.course_id);
         const response = surveyFor(studentId, course.course_id);
-        return `<tr><td>${esc(courseShort(course))}</td><td><span class="chip ${statusColor(attendance?.checkin_status)}">${esc(attendance?.checkin_status || "未入室")}</span></td><td>${esc(response?.status || attendance?.survey_status || "未提出")}</td></tr>`;
+        return `<tr><td>${esc(courseShort(course))}<br><span class="meta">${esc(course.date)}</span></td><td>${esc(course.term)}</td><td><span class="chip ${statusColor(attendance?.checkin_status)}">${esc(attendance?.checkin_status || "未入室")}</span></td><td>${esc(response?.status || attendance?.survey_status || "未提出")}</td></tr>`;
       })
       .join("");
+    const apps = applicationsFor(studentId);
+    const appEl = qs("#studentApplications");
+    if (appEl) {
+      appEl.innerHTML = apps.length
+        ? apps
+            .map((app) => {
+              const course = courseById(app.course_id);
+              const color = app.status === "申込済" ? "green" : app.status === "キャンセル" ? "red" : "amber";
+              return itemHtml(esc(courseShort(course) || app.course_id), `${esc(app.applied_at)} / ${esc(course?.term || "")} / ${esc(app.source)}`, `<span class="chip ${color}">${esc(app.status)}</span>`);
+            })
+            .join("")
+        : '<div class="notice">申込履歴はありません。</div>';
+    }
   }
 
   function bindStaffOnce() {
@@ -2022,7 +2055,7 @@
         rows
           .map(
             (student) =>
-              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td class="nowrap"><button class="small" type="button" data-student-history="${esc(student.student_id)}">声かけ・面談履歴</button>${editing ? ` <button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
+              `<tr><td>${esc(student.display_name)}<br><span class="meta">${esc(studentNumber(student))} / ${esc(student.student_id)}</span></td><td>${esc(student.grade)}</td><td>${esc(student.venue)}</td><td>${esc(student.advisor)}</td><td class="nowrap"><button class="small" type="button" data-student-history="${esc(student.student_id)}">カルテ</button>${editing ? ` <button class="small" type="button" data-edit-student="${esc(student.student_id)}">編集</button>` : ""}</td></tr>`
           )
           .join("") || '<tr><td colspan="5">該当する生徒はいません。</td></tr>';
     }
@@ -2570,6 +2603,7 @@
             <label class="field-span-2">講座名<input id="modalCourseName" value="${esc(course.course_name)}"></label>
             <label>学年<select id="modalCourseGrade">${grades.map((grade) => `<option ${grade === course.grade ? "selected" : ""}>${esc(grade)}</option>`).join("")}</select></label>
             <label>科目<select id="modalCourseSubject">${subjects.map((subject) => `<option ${subject === course.subject ? "selected" : ""}>${esc(subject)}</option>`).join("")}</select></label>
+            <label>期<select id="modalCourseTerm">${["第1期", "第2期", "第3期", "第4期", "第5期", "第6期"].map((term) => `<option ${term === course.term ? "selected" : ""}>${esc(term)}</option>`).join("")}</select></label>
             <label>校舎<select id="modalCourseVenue">${venues.map((venue) => `<option ${venue === course.venue ? "selected" : ""}>${esc(venue)}</option>`).join("")}</select></label>
             <label>教室<input id="modalCourseRoom" value="${esc(course.room)}"></label>
             <label>日付<input id="modalCourseDate" value="${esc(course.date)}"></label>
@@ -2596,6 +2630,7 @@
     course.course_name = qs("#modalCourseName").value.trim();
     course.grade = qs("#modalCourseGrade").value;
     course.subject = qs("#modalCourseSubject").value;
+    course.term = qs("#modalCourseTerm").value;
     course.venue = qs("#modalCourseVenue").value;
     course.room = qs("#modalCourseRoom").value.trim();
     course.date = qs("#modalCourseDate").value.trim();
@@ -2764,9 +2799,53 @@
     return state.actions.filter((action) => action.target_id === studentId && (action.action_type.includes("声かけ") || action.action_type === "面談記録"));
   }
 
+  function applicationsFor(studentId) {
+    return (state.applications || [])
+      .filter((app) => app.student_id === studentId)
+      .slice()
+      .sort((a, b) => String(b.applied_at).localeCompare(String(a.applied_at)));
+  }
+
+  function examResultsFor(studentId) {
+    return (state.examResults || []).filter((row) => row.student_id === studentId);
+  }
+
   function openStudentFollowupModal(studentId) {
     const student = studentById(studentId);
     if (!student) return;
+
+    const applications = applicationsFor(studentId);
+    const appHtml = applications.length
+      ? `<div class="table-scroll"><table class="dense"><thead><tr><th>申込日</th><th>講座</th><th>期</th><th>状態</th><th>経路</th></tr></thead><tbody>${applications
+          .map((app) => {
+            const course = courseById(app.course_id);
+            const color = app.status === "申込済" ? "green" : app.status === "キャンセル" ? "red" : "amber";
+            return `<tr><td>${esc(app.applied_at)}</td><td>${esc(courseShort(course) || app.course_id)}</td><td>${esc(course?.term || "-")}</td><td><span class="chip ${color}">${esc(app.status)}</span></td><td>${esc(app.source)}</td></tr>`;
+          })
+          .join("")}</tbody></table></div>`
+      : '<div class="notice">申込履歴はありません。</div>';
+
+    const courses = sortCourses(studentCourses(studentId));
+    const courseHtml = courses.length
+      ? `<div class="table-scroll"><table class="dense"><thead><tr><th>日付</th><th>期</th><th>講座</th><th>出席</th><th>アンケート</th></tr></thead><tbody>${courses
+          .map((course) => {
+            const att = attendanceFor(studentId, course.course_id);
+            const sv = surveyFor(studentId, course.course_id);
+            return `<tr><td>${esc(course.date)}</td><td>${esc(course.term)}</td><td>${esc(courseShort(course))}</td><td><span class="chip ${statusColor(att?.checkin_status)}">${esc(att?.checkin_status || "未入室")}</span></td><td>${esc(sv?.status || "未提出")}</td></tr>`;
+          })
+          .join("")}</tbody></table></div>`
+      : '<div class="notice">受講履歴はありません。</div>';
+
+    const exams = examResultsFor(studentId);
+    const examHtml = exams.length
+      ? `<div class="table-scroll"><table class="dense"><thead><tr><th>模試</th><th>実施日</th><th>英語</th><th>数学</th><th>国語</th><th>合計</th><th>偏差値</th></tr></thead><tbody>${exams
+          .map((row) => {
+            const pending = !row.total;
+            return `<tr><td>${esc(row.exam)}</td><td>${esc(row.date)}</td><td>${esc(row.english || "-")}</td><td>${esc(row.math || "-")}</td><td>${esc(row.japanese || "-")}</td><td>${pending ? "未実施" : esc(row.total)}</td><td>${pending ? "-" : esc(row.deviation)}</td></tr>`;
+          })
+          .join("")}</tbody></table></div>`
+      : '<div class="notice">模試結果はありません。</div>';
+
     const history = studentFollowupHistory(studentId);
     const histHtml = history.length
       ? history
@@ -2778,14 +2857,18 @@
             )
           )
           .join("")
-      : '<div class="notice">この生徒の声かけ・面談履歴はありません。</div>';
+      : '<div class="notice">声かけ・面談履歴はありません。</div>';
+
     openModal(
-      "声かけ・面談履歴 / " + student.display_name,
+      "生徒カルテ / " + student.display_name,
       `
         <div class="stack">
-          ${itemHtml(esc(student.display_name), `${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")}`)}
+          ${itemHtml(esc(student.display_name), `${esc(studentNumber(student))} / ${esc(student.grade)} / ${esc(student.venue)} / ${esc(student.school || "")} / 担当 ${esc(student.advisor || "")}`)}
           <div class="actions"><button class="small primary" type="button" data-respond="${esc(studentId)}|">対応を追加</button></div>
-          <div><h3 class="section-title">履歴</h3><div class="stack" style="margin-top:8px">${histHtml}</div></div>
+          <div><h3 class="section-title">申込履歴</h3><div style="margin-top:8px">${appHtml}</div></div>
+          <div><h3 class="section-title">受講履歴</h3><div style="margin-top:8px">${courseHtml}</div></div>
+          <div><h3 class="section-title">模試成績（第1〜4回）</h3><div style="margin-top:8px">${examHtml}</div></div>
+          <div><h3 class="section-title">声かけ・面談履歴</h3><div class="stack" style="margin-top:8px">${histHtml}</div></div>
         </div>
       `
     );

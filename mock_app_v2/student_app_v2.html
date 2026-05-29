@@ -119,6 +119,10 @@
 
           <section class="tab-panel" data-tab-panel="student-log">
             <div class="panel">
+              <div class="panel-head"><h2>受講コマ</h2></div>
+              <div class="panel-body"><div id="studentPeriodSummary"></div></div>
+            </div>
+            <div class="panel" style="margin-top:12px">
               <div class="panel-head"><h2>科目別受講状況</h2></div>
               <div class="panel-body"><div id="studentSubjectBars" class="stack"></div></div>
             </div>
@@ -126,10 +130,14 @@
               <div class="panel-head"><h2>受講履歴</h2></div>
               <div class="panel-body">
                 <table>
-                  <thead><tr><th>講座</th><th>出席</th><th>アンケート</th></tr></thead>
+                  <thead><tr><th>講座</th><th>期</th><th>出席</th><th>アンケート</th></tr></thead>
                   <tbody id="studentHistoryRows"></tbody>
                 </table>
               </div>
+            </div>
+            <div class="panel" style="margin-top:12px">
+              <div class="panel-head"><h2>申込履歴</h2></div>
+              <div class="panel-body"><div id="studentApplications" class="stack"></div></div>
             </div>
           </section>
 
