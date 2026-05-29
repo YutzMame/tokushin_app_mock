@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "tokushin_v2_state";
-  const STATE_SCHEMA = 5;
+  const STATE_SCHEMA = 6;
   const APP_DATE = "2026-05-28";
   const CSV_FILES = {
     students: "students_v2.csv",
@@ -16,6 +16,7 @@
     teacherNotes: "teacher_notes_v2.csv",
     staffMaster: "staff_master_v2.csv",
     applications: "applications_v2.csv",
+    surveyTemplates: "survey_templates_v2.csv",
   };
 
   let state = null;
@@ -369,6 +370,7 @@
     state.ui.masterEdit ||= { students: false, courses: false, staff: false, applications: false, thresholds: false };
     state.ui.masterFilter ||= { students: "", courses: "", staff: "", applications: "" };
     state.ui.riskView ||= "all";
+    state.ui.defaultSurveyTemplate ||= "TPL-STD";
     state.ui.readNotices ||= [];
     state.selected.tabletVenue ||= "A校";
     const firstTabletCourse = sortCourses(
@@ -992,6 +994,36 @@
   const surveyOptions = (values, current, fallback) =>
     values.map((value) => `<option ${String(current ?? fallback) === String(value) ? "selected" : ""}>${esc(value)}</option>`).join("");
 
+  const STANDARD_TEMPLATE = { template_id: "", name: "標準", kind: "プリセット", items: "satisfaction|difficulty|understanding|comment|consultation", extra_label: "", target_course: "", active: "yes" };
+
+  function templateItems(template) {
+    return String(template?.items || "").split("|").map((item) => item.trim()).filter(Boolean);
+  }
+
+  function resolveSurveyTemplate(course) {
+    const templates = state.surveyTemplates || [];
+    const adhoc = templates.find((t) => t.active === "yes" && t.kind === "使い捨て" && t.target_course === course.course_id);
+    if (adhoc) return adhoc;
+    const defId = state.ui.defaultSurveyTemplate;
+    if (defId) {
+      const preset = templates.find((t) => t.template_id === defId && t.active === "yes");
+      if (preset) return preset;
+    }
+    return STANDARD_TEMPLATE;
+  }
+
+  function surveyItemField(key, response) {
+    if (key === "satisfaction") return `<label>満足度<select id="msSat">${surveyOptions(["5", "4", "3", "2", "1"], response?.satisfaction, "4")}</select></label>`;
+    if (key === "difficulty") return `<label>難易度<select id="msDiff">${surveyOptions(["易しい", "ちょうどよい", "難しい"], response?.difficulty, "ちょうどよい")}</select></label>`;
+    if (key === "understanding") return `<label>理解度<select id="msUnd">${surveyOptions(["5", "4", "3", "2", "1"], response?.understanding, "4")}</select></label>`;
+    if (key === "comment") return `<label>コメント<textarea id="msComment">${esc(response?.comment || "")}</textarea></label>`;
+    if (key === "consultation") {
+      const consult = response?.consultation || "no";
+      return `<label>相談希望<select id="msConsult"><option value="no" ${consult !== "yes" ? "selected" : ""}>なし</option><option value="yes" ${consult === "yes" ? "selected" : ""}>あり</option></select></label>`;
+    }
+    return "";
+  }
+
   function openStudentSurveyModal(courseId) {
     const course = courseById(courseId);
     if (!course) return;
@@ -1003,17 +1035,20 @@
       return;
     }
     const editable = windowState === "回答受付中";
-    const consult = response?.consultation || "no";
+    const template = resolveSurveyTemplate(course);
+    const fields = templateItems(template).map((key) => surveyItemField(key, response)).join("");
+    const extra = template.extra_label
+      ? `<label>${esc(template.extra_label)}<textarea id="msExtra">${esc(response?.extra || "")}</textarea></label>`
+      : "";
+    const templateChip = `<span class="chip blue">${esc(template.name)}${template.kind === "使い捨て" ? "（臨時）" : ""}</span>`;
     openModal(
       "アンケート回答 / " + courseShort(course),
       `
         <div class="stack" data-survey-course="${esc(courseId)}">
           ${itemHtml(esc(courseShort(course)), esc(courseMeta(course)), `<span class="chip ${editable ? "green" : "blue"}">${esc(windowState)}</span>`)}
-          <label>満足度<select id="msSat">${surveyOptions(["5", "4", "3", "2", "1"], response?.satisfaction, "4")}</select></label>
-          <label>難易度<select id="msDiff">${surveyOptions(["易しい", "ちょうどよい", "難しい"], response?.difficulty, "ちょうどよい")}</select></label>
-          <label>理解度<select id="msUnd">${surveyOptions(["5", "4", "3", "2", "1"], response?.understanding, "4")}</select></label>
-          <label>コメント<textarea id="msComment">${esc(response?.comment || "")}</textarea></label>
-          <label>相談希望<select id="msConsult"><option value="no" ${consult !== "yes" ? "selected" : ""}>なし</option><option value="yes" ${consult === "yes" ? "selected" : ""}>あり</option></select></label>
+          <div class="notice">アンケート様式: ${templateChip}</div>
+          ${fields}
+          ${extra}
           ${editable
             ? `<div class="modal-actions"><button type="button" data-close-modal>閉じる</button><button type="button" data-student-survey-save="下書き">一時保存</button><button class="primary" type="button" data-student-survey-save="提出済">提出</button></div>`
             : '<div class="notice">回答受付中のみ編集できます。</div><div class="modal-actions"><button type="button" data-close-modal>閉じる</button></div>'}
@@ -1032,11 +1067,12 @@
     const response = surveyFor(studentId, courseId, true);
     const before = response.status;
     response.status = status;
-    response.satisfaction = qs("#msSat").value;
-    response.difficulty = qs("#msDiff").value;
-    response.understanding = qs("#msUnd").value;
-    response.comment = qs("#msComment").value.trim();
-    response.consultation = qs("#msConsult").value;
+    if (qs("#msSat")) response.satisfaction = qs("#msSat").value;
+    if (qs("#msDiff")) response.difficulty = qs("#msDiff").value;
+    if (qs("#msUnd")) response.understanding = qs("#msUnd").value;
+    if (qs("#msComment")) response.comment = qs("#msComment").value.trim();
+    if (qs("#msConsult")) response.consultation = qs("#msConsult").value;
+    if (qs("#msExtra")) response.extra = qs("#msExtra").value.trim();
     response.input_method = "app";
     response.input_by = "student";
     if (status === "提出済") response.submitted_at = nowStamp();
@@ -1174,6 +1210,12 @@
       renderStaffRealtime();
     });
     qs("#voiceButton")?.addEventListener("click", staffAddVoiceAction);
+    qs("#createSurveyTemplate")?.addEventListener("click", createSurveyTemplate);
+    qs("#defaultSurveyTemplate")?.addEventListener("change", (event) => {
+      state.ui.defaultSurveyTemplate = event.target.value;
+      saveState();
+      renderStaff();
+    });
     qs("#saveStaffSettings")?.addEventListener("click", saveStaffSettings);
     qs("#previewExport")?.addEventListener("click", renderExportPreview);
     qs("#downloadExport")?.addEventListener("click", downloadLatestExport);
@@ -1271,6 +1313,11 @@
         saveApplicationFromModal();
         return;
       }
+      const templateToggle = event.target.closest("[data-template-toggle]");
+      if (templateToggle) {
+        toggleSurveyTemplate(templateToggle.dataset.templateToggle);
+        return;
+      }
       const riskViewButton = event.target.closest("[data-risk-view]");
       if (riskViewButton) {
         state.ui.riskView = riskViewButton.dataset.riskView;
@@ -1297,6 +1344,19 @@
       const courseSurveyButton = event.target.closest("[data-course-survey]");
       if (courseSurveyButton) {
         openSurveyModal(courseSurveyButton.dataset.courseSurvey);
+        return;
+      }
+      const issueQrButton = event.target.closest("[data-issue-qr]");
+      if (issueQrButton) {
+        openIssueQrModal(issueQrButton.dataset.issueQr);
+        return;
+      }
+      const issueQrPrint = event.target.closest("[data-issue-qr-print]");
+      if (issueQrPrint) {
+        addAction({ role: "staff", action_type: "入室QR発行", target_type: "course", target_id: issueQrPrint.dataset.issueQrPrint, after_value: "発行", reason: "教室掲示用" });
+        saveState();
+        renderStaff();
+        showToast("入室QRを発行しました（モック：印刷/PDF）。");
         return;
       }
       const proxyCheckinButton = event.target.closest("[data-proxy-checkin]");
@@ -1450,11 +1510,88 @@
 
   function renderStaff() {
     renderStaffSelectors();
+    renderStaffBadges();
     renderStaffDashboard();
     renderStaffRealtime();
+    renderStaffSummary();
     renderStaffMaster();
     renderStaffRisk();
     renderStaffExport();
+  }
+
+  function weekStart(dateStr) {
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1);
+    const dow = (dt.getDay() + 6) % 7; // 月曜=0
+    dt.setDate(dt.getDate() - dow);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  }
+
+  function renderStaffSummary() {
+    const venue = state.selected.staffVenue;
+    const students = state.students.filter((student) => student.venue === venue);
+    const rows = students.map((student) => {
+      const courses = studentCourses(student.student_id);
+      const byWeek = {};
+      const bySubject = {};
+      let attended = 0;
+      let planned = 0;
+      courses.forEach((course) => {
+        planned += numberValue(course.period_count);
+        const att = attendanceFor(student.student_id, course.course_id);
+        if (att?.checkin_status === "入室済") {
+          const periods = numberValue(course.period_count);
+          attended += periods;
+          const wk = weekStart(course.date);
+          byWeek[wk] = (byWeek[wk] || 0) + periods;
+          bySubject[course.subject] = (bySubject[course.subject] || 0) + periods;
+        }
+      });
+      const threshold = thresholdForGrade(student.grade);
+      const required = threshold ? numberValue(threshold.threshold_periods) : 0;
+      return { student, byWeek, bySubject, attended, planned, required };
+    });
+    const weeks = [...new Set(rows.flatMap((row) => Object.keys(row.byWeek)))].sort();
+    const metrics = qs("#summaryMetrics");
+    if (metrics) {
+      metrics.innerHTML = [
+        metric("対象生徒", rows.length),
+        metric("受講コマ計", rows.reduce((sum, row) => sum + row.attended, 0)),
+        metric("基準未達", rows.filter((row) => row.required && row.attended < row.required).length),
+      ].join("");
+    }
+    const head = `<thead><tr><th>生徒</th><th>学年</th>${weeks.map((w) => `<th>${esc(w.slice(5))}週</th>`).join("")}<th>受講計</th><th>基準</th><th>差分</th><th>科目別</th></tr></thead>`;
+    const body = rows.length
+      ? rows
+          .map((row) => {
+            const wcells = weeks.map((w) => `<td>${row.byWeek[w] || 0}</td>`).join("");
+            const diffChip = row.required
+              ? row.attended < row.required
+                ? `<span class="chip red">${row.attended - row.required}</span>`
+                : `<span class="chip green">+${row.attended - row.required}</span>`
+              : "-";
+            const subj = Object.entries(row.bySubject).map(([k, v]) => `${esc(k)}${v}`).join(" / ") || "-";
+            return `<tr><td>${esc(row.student.display_name)}</td><td>${esc(row.student.grade)}</td>${wcells}<td>${row.attended}/${row.planned}</td><td>${row.required || "-"}</td><td>${diffChip}</td><td>${subj}</td></tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="${weeks.length + 6}">対象の生徒がいません。</td></tr>`;
+    const table = qs("#summaryTable");
+    if (table) table.innerHTML = head + `<tbody>${body}</tbody>`;
+  }
+
+  function setNavBadge(selector, count) {
+    const el = qs(selector);
+    if (!el) return;
+    el.textContent = String(count);
+    el.classList.toggle("is-hidden", count <= 0);
+  }
+
+  function renderStaffBadges() {
+    const anomalies = detectAnomalies().filter((item) => !isAnomalyConfirmed(item.key)).length;
+    const changes = state.changes.filter((change) => change.confirmed_status !== "確認済").length;
+    setNavBadge("#staffHomeBadge", anomalies + changes);
+    setNavBadge("#staffRiskBadge", anomalies);
   }
 
   function venueTodayCourses() {
@@ -1527,6 +1664,7 @@
               extra: `<div class="status-row"><span class="chip green">入室 ${checked}/${rows.length}</span><span class="chip amber">未入室 ${missing}</span><span class="chip blue">回答 ${answered}/${rows.length}</span></div>`,
               actions: `
                 <button class="small primary" type="button" data-attendance-table="${esc(course.course_id)}">出席状況</button>
+                <button class="small" type="button" data-issue-qr="${esc(course.course_id)}">入室QR</button>
                 <button class="small" type="button" data-course-survey="${esc(course.course_id)}">アンケート</button>
                 <button class="small" type="button" data-open-course-change="${esc(course.course_id)}">講座変更</button>
                 ${materialsButton(course)}
@@ -1701,7 +1839,7 @@
     const pendingHtml = pending.length
       ? pending.map((row) => itemHtml(esc(row.student?.display_name || row.attendance.student_id), `${esc(row.student?.grade || "")} / 未回答`, '<span class="chip amber">未回答</span>')).join("")
       : '<div class="notice green">未回答者はいません。</div>';
-    const commentRows = submitted.filter((row) => row.survey?.comment);
+    const commentRows = submitted.filter((row) => row.survey?.comment || row.survey?.extra);
     const commentsHtml = commentRows.length
       ? commentRows
           .map((row) => {
@@ -1715,9 +1853,10 @@
               const done = voiced.after_value === "対応済み";
               op = `<span class="chip ${done ? "green" : "amber"}">${esc(voiced.after_value)}</span>${done ? "" : ` <button class="small" type="button" data-voice-complete="${esc(voiced.action_id)}">対応済み</button>`} <button class="small" type="button" data-voice-remove="${esc(voiced.action_id)}">外す</button>`;
             }
+            const extra = row.survey.extra ? `<br>追加回答: ${esc(row.survey.extra)}` : "";
             return itemHtml(
               esc(row.student?.display_name || studentId),
-              `${esc(row.survey.comment)}<br>満足度${esc(row.survey.satisfaction)} / 難易度${esc(row.survey.difficulty)} / 理解度${esc(row.survey.understanding)}`,
+              `${esc(row.survey.comment)}<br>満足度${esc(row.survey.satisfaction)} / 難易度${esc(row.survey.difficulty)} / 理解度${esc(row.survey.understanding)}${extra}`,
               `${consult ? '<span class="chip amber">相談希望</span>' : ""}${op}`
             );
           })
@@ -1739,6 +1878,30 @@
     if (!course) return;
     surveyModalCourse = courseId;
     openModal("アンケート状況 / " + courseShort(course), `<div class="stack">${surveyBodyHtml(course)}</div>`);
+  }
+
+  function openIssueQrModal(courseId) {
+    const course = courseById(courseId);
+    if (!course) return;
+    openModal(
+      "入室QR発行 / " + courseShort(course),
+      `
+        <div class="stack">
+          ${itemHtml(esc(courseShort(course)), esc(courseMeta(course)), courseStatusChip(course))}
+          <div class="notice">教室前に掲示する入室用QRです。生徒は「QRを読み取る」で読み取り、出席登録します。</div>
+          <div class="qr-box"><div class="qr-mark" aria-hidden="true"></div></div>
+          <div class="grid-2">
+            ${itemHtml("対象", `${esc(course.venue)} ${esc(course.room)} / ${esc(course.date)} ${esc(course.start_time)}-${esc(course.end_time)}`)}
+            ${itemHtml("QR有効時間", "開始30分前〜終了まで")}
+          </div>
+          <div class="modal-actions">
+            <button type="button" data-close-modal>閉じる</button>
+            <button type="button" data-issue-qr-print="${esc(courseId)}">印刷</button>
+            <button class="primary" type="button" data-issue-qr-print="${esc(courseId)}">PDF出力</button>
+          </div>
+        </div>
+      `
+    );
   }
 
   function proxyCheckin(studentId, courseId, reason) {
@@ -1879,6 +2042,7 @@
     renderMasterCourses();
     renderMasterStaff();
     renderMasterApplications();
+    renderSurveyTemplates();
 
     const venues = [...new Set(state.courses.map((course) => course.venue))];
     const settings = qs("#staffSettings");
@@ -1968,6 +2132,73 @@
           })
           .join("") || '<tr><td colspan="6">該当する申込はありません。</td></tr>';
     }
+  }
+
+  const SURVEY_ITEM_LABELS = { satisfaction: "満足度", difficulty: "難易度", understanding: "理解度", comment: "コメント", consultation: "相談希望" };
+  const SURVEY_ITEM_CHECKBOX = {
+    satisfaction: "#tplItemSatisfaction",
+    difficulty: "#tplItemDifficulty",
+    understanding: "#tplItemUnderstanding",
+    comment: "#tplItemComment",
+    consultation: "#tplItemConsultation",
+  };
+
+  function renderSurveyTemplates() {
+    const presets = state.surveyTemplates.filter((t) => t.kind === "プリセット" && t.active === "yes");
+    const def = qs("#defaultSurveyTemplate");
+    if (def) {
+      def.innerHTML = `<option value="">標準（全項目）</option>` + presets.map((t) => `<option value="${esc(t.template_id)}">${esc(t.name)}</option>`).join("");
+      def.value = state.ui.defaultSurveyTemplate || "";
+    }
+    const target = qs("#tplTargetCourse");
+    if (target) {
+      target.innerHTML = sortCourses(state.courses).map((c) => `<option value="${esc(c.course_id)}">${esc(courseShort(c))} ${esc(c.date)}</option>`).join("");
+    }
+    const body = qs("#surveyTemplateRows");
+    if (body) {
+      body.innerHTML =
+        state.surveyTemplates
+          .map((t) => {
+            const itemsLabel = templateItems(t).map((k) => SURVEY_ITEM_LABELS[k] || k).join("・") + (t.extra_label ? ` + ${esc(t.extra_label)}` : "");
+            const where = t.kind === "使い捨て" ? esc(courseShort(courseById(t.target_course)) || t.target_course) : t.template_id === state.ui.defaultSurveyTemplate ? "標準適用中" : "汎用";
+            const active = t.active === "yes";
+            return `<tr><td>${esc(t.name)}</td><td>${esc(t.kind)}</td><td>${itemsLabel}</td><td>${where} / ${active ? "有効" : "無効"}</td><td><button class="small" type="button" data-template-toggle="${esc(t.template_id)}">${active ? "無効化" : "有効化"}</button></td></tr>`;
+          })
+          .join("") || '<tr><td colspan="5">テンプレートはありません。</td></tr>';
+    }
+  }
+
+  function createSurveyTemplate() {
+    const name = qs("#tplName")?.value.trim();
+    if (!name) {
+      showToast("名称を入力してください。");
+      return;
+    }
+    const kind = qs("#tplKind")?.value || "プリセット";
+    const items = Object.keys(SURVEY_ITEM_CHECKBOX).filter((key) => qs(SURVEY_ITEM_CHECKBOX[key])?.checked);
+    if (!items.length) {
+      showToast("項目を1つ以上選んでください。");
+      return;
+    }
+    const extra = qs("#tplExtra")?.value.trim() || "";
+    const target = kind === "使い捨て" ? qs("#tplTargetCourse")?.value || "" : "";
+    const template = { template_id: makeId("TPL"), name, kind, items: items.join("|"), extra_label: extra, target_course: target, active: "yes" };
+    state.surveyTemplates.push(template);
+    addAction({ role: "staff", action_type: "アンケート作成", target_type: "survey_template", target_id: template.template_id, after_value: kind, reason: name });
+    qs("#tplName").value = "";
+    qs("#tplExtra").value = "";
+    saveState();
+    renderStaff();
+    showToast(`アンケート「${name}」を作成しました。`);
+  }
+
+  function toggleSurveyTemplate(templateId) {
+    const template = state.surveyTemplates.find((t) => t.template_id === templateId);
+    if (!template) return;
+    template.active = template.active === "yes" ? "no" : "yes";
+    if (template.active === "no" && state.ui.defaultSurveyTemplate === templateId) state.ui.defaultSurveyTemplate = "";
+    saveState();
+    renderStaff();
   }
 
   const MASTER_EXPORT = {

@@ -1,0 +1,5 @@
+template_id,name,kind,items,extra_label,target_course,active
+TPL-STD,標準授業後アンケート,プリセット,satisfaction|difficulty|understanding|comment|consultation,,,yes
+TPL-DIFF,難易度・理解度重点,プリセット,difficulty|understanding|comment,,,yes
+TPL-MOT,モチベーション確認,プリセット,satisfaction|comment|consultation,次回までの目標,,yes
+TPL-ADHOC-JPN,臨時：記述演習ふりかえり,使い捨て,satisfaction|comment,今日の記述演習で難しかった点,C-V2-20260528-JPN-O,yes

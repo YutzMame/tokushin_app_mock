@@ -24,8 +24,9 @@
 
   <main class="wrap layout" id="staffLayout">
     <nav class="side-nav" id="staffSideNav" aria-label="校舎スタッフタブ">
-      <button class="tab-button active" type="button" data-tab-target="staff-home">ホーム</button>
+      <button class="tab-button active" type="button" data-tab-target="staff-home">ホーム<span class="tab-badge is-hidden" id="staffHomeBadge">0</span></button>
       <button class="tab-button" type="button" data-tab-target="staff-realtime">リアルタイム</button>
+      <button class="tab-button" type="button" data-tab-target="staff-summary">集計</button>
       <div class="nav-item has-menu">
         <button class="tab-button" type="button" data-tab-target="staff-master">マスタ・設定</button>
         <div class="nav-menu" role="menu" aria-label="マスタ・設定メニュー">
@@ -35,7 +36,7 @@
         </div>
       </div>
       <div class="nav-item has-menu">
-        <button class="tab-button" type="button" data-tab-target="staff-risk">異常・声かけ</button>
+        <button class="tab-button" type="button" data-tab-target="staff-risk">異常・声かけ<span class="tab-badge is-hidden" id="staffRiskBadge">0</span></button>
         <div class="nav-menu" role="menu" aria-label="異常・声かけメニュー">
           <button type="button" data-tab-target="staff-risk" data-risk-view="all">すべて</button>
           <button type="button" data-tab-target="staff-risk" data-risk-view="anomaly">異常検知</button>
@@ -78,6 +79,17 @@
             </div>
             <div class="notice" style="margin-top:10px">QR読込・代理・紙回答で入室した生徒を、講座・学年に関係なく新しい順に表示します。生徒提示QRの読取（タブレット）や生徒側登録もリアルタイムに反映します。</div>
             <div id="realtimeList" class="stack" style="margin-top:12px"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-tab-panel="staff-summary">
+        <section class="panel">
+          <div class="panel-head"><h2>受講コマ集計（SPS週間受講コマ）</h2></div>
+          <div class="panel-body">
+            <div class="notice">上部で選択した校舎の生徒について、週ごとの受講済みコマ数・科目別・基準との差分を集計します。SPS（受講・模試成績）連携用の数値です。CSV出力は「データ入出力 &gt; 受講コマCSV」。</div>
+            <div class="metric-grid" id="summaryMetrics" style="margin-top:12px"></div>
+            <div class="table-scroll" style="margin-top:12px"><table class="dense" id="summaryTable"></table></div>
           </div>
         </section>
       </section>
@@ -133,6 +145,30 @@
         <section class="panel" id="masterSettingsPanel" style="margin-top:14px">
           <div class="panel-head"><h2>校舎・教室</h2></div>
           <div class="panel-body"><div id="staffSettings" class="grid-3"></div></div>
+        </section>
+
+        <section class="panel" id="surveyTemplatePanel" style="margin-top:14px">
+          <div class="panel-head"><h2>アンケート作成（テンプレート）</h2></div>
+          <div class="panel-body">
+            <div class="notice">プリセット（再利用するひな型）と、その時だけの使い捨てアンケートを作成できます。標準として適用するプリセットを選べます（特定講座に使い捨てがある場合はそちらを優先）。</div>
+            <label style="margin-top:10px">標準として適用するプリセット<select id="defaultSurveyTemplate"></select></label>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr><th>名称</th><th>種別</th><th>項目</th><th>対象 / 状態</th><th>操作</th></tr></thead><tbody id="surveyTemplateRows"></tbody></table></div>
+            <h3 class="section-title" style="margin:14px 0 8px">新規作成</h3>
+            <div class="form-grid">
+              <label>名称<input id="tplName" placeholder="例：標準授業後アンケート"></label>
+              <label>種別<select id="tplKind"><option value="プリセット">プリセット（再利用）</option><option value="使い捨て">使い捨て（その時だけ）</option></select></label>
+              <label class="field-span-2">対象講座（使い捨て時）<select id="tplTargetCourse"></select></label>
+            </div>
+            <div class="actions" style="margin-top:10px">
+              <label class="setting-toggle"><input id="tplItemSatisfaction" type="checkbox" checked>満足度</label>
+              <label class="setting-toggle"><input id="tplItemDifficulty" type="checkbox" checked>難易度</label>
+              <label class="setting-toggle"><input id="tplItemUnderstanding" type="checkbox" checked>理解度</label>
+              <label class="setting-toggle"><input id="tplItemComment" type="checkbox" checked>コメント</label>
+              <label class="setting-toggle"><input id="tplItemConsultation" type="checkbox" checked>相談希望</label>
+            </div>
+            <label style="margin-top:10px">追加の自由記述質問（任意）<input id="tplExtra" placeholder="例：今日いちばん難しかった点"></label>
+            <button class="primary" id="createSurveyTemplate" type="button" style="margin-top:10px">アンケートを作成</button>
+          </div>
         </section>
       </section>
 
